@@ -61,6 +61,7 @@ export async function createRoom(n, board) {
     N:                 n,
     hostOnline:        true,
     guestOnline:       false,
+    guestEverJoined:   false,   // set permanently true when guest joins
     seq:               0,
     board:             JSON.stringify(flattenBoard(board, n)),
     current:           1,
@@ -98,7 +99,7 @@ export async function joinRoom(code) {
   if (d.guestOnline)        return { ok: false, error: 'Room is full' };
   if (d.gameOver)           return { ok: false, error: 'Game already ended' };
 
-  await update(r, { guestOnline: true });
+  await update(r, { guestOnline: true, guestEverJoined: true });
 
   // If the browser closes unexpectedly, mark guest as offline automatically
   onDisconnect(ref(db, `rooms/${code}/guestOnline`)).set(false);
@@ -135,13 +136,19 @@ export function subscribeRoom(onStateChange, onOpponentJoined, onOpponentLeft) {
       onOpponentJoined();
     }
 
-    // Detect opponent disconnect / leave (only after game has started)
-    if (gameStarted && !opponentLeftNotified && onOpponentLeft) {
-      const opponentOnline = myPlayer === 1 ? d.guestOnline : d.hostOnline;
-      if (opponentOnline === false) {
-        opponentLeftNotified = true;
-        onOpponentLeft();
-      }
+    // Host: guest left — use guestEverJoined (survives batched updates)
+    // Pass gameStarted so the handler knows if the game had actually begun
+    if (myPlayer === 1 && d.guestEverJoined && !d.guestOnline
+        && !opponentLeftNotified && onOpponentLeft) {
+      opponentLeftNotified = true;
+      onOpponentLeft(gameStarted);
+    }
+
+    // Guest: host left
+    if (myPlayer === 2 && d.hostOnline === false
+        && !opponentLeftNotified && onOpponentLeft) {
+      opponentLeftNotified = true;
+      onOpponentLeft(true);
     }
 
     // Apply state if it came from the other player

@@ -123,10 +123,16 @@ async function tryPlace(x, y, z) {
 }
 
 // ─── Opponent left notification ───────────────────────────────────────────────
-function handleOpponentLeft() {
-  document.getElementById('overlayTitle').textContent = '👋 Opponent left';
-  document.getElementById('overlayBody').textContent  = 'Your opponent has left the game.';
-  document.getElementById('overlay').style.display    = 'flex';
+function handleOpponentLeft(gameWasActive) {
+  // Always hide the waiting overlay in case we're still there
+  waitingOvl.style.display = 'none';
+  document.getElementById('overlayTitle').textContent = gameWasActive
+    ? '👋 Opponent left'
+    : '👋 Nobody joined';
+  document.getElementById('overlayBody').textContent = gameWasActive
+    ? 'Your opponent has left the game.'
+    : 'Your opponent left before the game started.';
+  document.getElementById('overlay').style.display = 'flex';
 }
 
 // ─── Apply opponent's move from Firebase ─────────────────────────────────────
