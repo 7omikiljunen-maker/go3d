@@ -174,8 +174,13 @@ document.getElementById('aiBtn').onclick = () => {
   if (playMode === 'cvc' || (playMode === 'pvc' && current === 2)) doAiMove();
 };
 
-document.getElementById('resetBtn').onclick   = setupBoard;
+document.getElementById('resetBtn').onclick    = setupBoard;
 document.getElementById('overlayClose').onclick = setupBoard;
+
+const helpOverlay = document.getElementById('help-overlay');
+document.getElementById('helpBtn').onclick   = () => { helpOverlay.style.display = 'flex'; };
+document.getElementById('helpClose').onclick = () => { helpOverlay.style.display = 'none'; };
+helpOverlay.addEventListener('click', e => { if (e.target === helpOverlay) helpOverlay.style.display = 'none'; });
 
 document.querySelectorAll('#sizeButtons button').forEach(btn => {
   btn.onclick = () => {
