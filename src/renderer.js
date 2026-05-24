@@ -5,6 +5,9 @@ import { N, C, SP, OFF, layerVisible, board, computeTerritory } from './board.js
 // ─── Core Three.js objects ────────────────────────────────────────────────────
 export let renderer, camera, scene;
 
+// ─── Theme flag (updated by setSceneBg) ──────────────────────────────────────
+let lightTheme = false;
+
 // Groups
 export let gridGroup, dotsGroup, hintsGroup, stonesGroup, terrGroup, markerGroup;
 
@@ -68,7 +71,11 @@ export function resizeRenderer(canvas) {
 // ─── Scene builders ──────────────────────────────────────────────────────────
 export function buildGrid() {
   while (gridGroup.children.length) gridGroup.remove(gridGroup.children[0]);
-  const mat = new THREE.LineBasicMaterial({ color: 0x4466aa, opacity: 0.22, transparent: true });
+  const mat = new THREE.LineBasicMaterial({
+    color:       lightTheme ? 0x1a2a4a : 0x4466aa,
+    opacity:     lightTheme ? 0.45     : 0.22,
+    transparent: true,
+  });
   for (let a = 0; a < N; a++) for (let b = 0; b < N; b++) {
     if (!layerVisible[b]) continue;
     const mk = (p1, p2) => {
@@ -87,7 +94,11 @@ export function buildDots() {
   while (dotsGroup.children.length) dotsGroup.remove(dotsGroup.children[0]);
   dotMeshList = []; intersectionPoints = [];
   const geo = new THREE.SphereGeometry(C.dotR, 8, 8);
-  const mat = new THREE.MeshBasicMaterial({ color: 0x8899cc, opacity: 0.45, transparent: true });
+  const mat = new THREE.MeshBasicMaterial({
+    color:       lightTheme ? 0x223366 : 0x8899cc,
+    opacity:     lightTheme ? 0.65     : 0.45,
+    transparent: true,
+  });
   for (let x = 0; x < N; x++) for (let y = 0; y < N; y++) for (let z = 0; z < N; z++) {
     const m = new THREE.Mesh(geo, mat);
     m.position.set(OFF + x*SP, OFF + y*SP, OFF + z*SP);
@@ -283,8 +294,12 @@ export function startRenderLoop() {
   animate();
 }
 
-// ─── Theme: update Three.js background & fog color ───────────────────────────
-export function setSceneBg(hex) {
+// ─── Theme: update Three.js background & fog color, rebuild grid/dots ────────
+export function setSceneBg(hex, isLight = false) {
+  lightTheme = isLight;
   renderer.setClearColor(hex, 1);
   if (scene.fog) scene.fog.color.setHex(hex);
+  // Rebuild so grid/dot materials pick up the new colour
+  buildGrid();
+  buildDots();
 }

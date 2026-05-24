@@ -493,7 +493,7 @@ const BG_LIGHT = 0xe8ecf5;
 function applyTheme(name) {
   const isLight = name === 'light';
   document.documentElement.dataset.theme = isLight ? 'light' : '';
-  setSceneBg(isLight ? BG_LIGHT : BG_DARK);
+  setSceneBg(isLight ? BG_LIGHT : BG_DARK, isLight);
   document.getElementById('themeBtn').textContent = isLight ? '🌙' : '☀️';
   localStorage.setItem('go3d-theme', name);
 }
