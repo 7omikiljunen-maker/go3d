@@ -210,11 +210,13 @@
 
     /* ── Bottom bar ──────────────────────────────────────────────────────── */
     #bottom-ui {
-      position: absolute; bottom: 70px; left: 0; right: 0;
+      position: absolute; bottom: 56px; left: 0; right: 0;
       display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
+      /* leave horizontal margins so wrapped rows never reach the icon buttons */
+      padding: 0 90px;
     }
     @supports (padding-bottom: env(safe-area-inset-bottom)) {
-      #bottom-ui { bottom: calc(env(safe-area-inset-bottom) + 16px); }
+      #bottom-ui { bottom: calc(env(safe-area-inset-bottom) + 56px); }
     }
     .action-btn {
       background: var(--ctrl-bg);
@@ -237,8 +239,9 @@
     }
 
     /* ── Icon buttons (help / theme / chat) ──────────────────────────────── */
+    /* Sit in their own row BELOW the action buttons — no overlap possible */
     #helpBtn, #themeBtn, #chatBtn {
-      position: absolute; bottom: 70px;
+      position: absolute; bottom: 14px;
       width: 30px; height: 30px; border-radius: 50%;
       background: var(--ctrl-bg);
       border: 0.5px solid var(--ctrl-border);
@@ -248,7 +251,7 @@
     }
     @supports (bottom: env(safe-area-inset-bottom)) {
       #helpBtn, #themeBtn, #chatBtn {
-        bottom: calc(env(safe-area-inset-bottom) + 16px);
+        bottom: calc(env(safe-area-inset-bottom) + 14px);
       }
     }
     #helpBtn  { right: 14px; }
