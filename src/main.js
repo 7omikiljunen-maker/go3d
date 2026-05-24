@@ -319,7 +319,6 @@ document.querySelectorAll('#sizeButtons button').forEach(btn => {
     setN(newN);
     syncSizeButtons();
     setupBoard();
-    closeSettings(); // close so the player sees the new board
   };
 });
 
@@ -329,7 +328,6 @@ document.querySelectorAll('#modeButtons button[data-mode]').forEach(btn => {
     setPlayMode(btn.dataset.mode);
     syncModeButtons();
     setupBoard();
-    closeSettings();
   };
 });
 
