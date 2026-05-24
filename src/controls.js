@@ -46,11 +46,19 @@ export function attachMouseControls(canvas, onClickAt) {
 
 // ─── Touch ───────────────────────────────────────────────────────────────────
 export function attachTouchControls(canvas, onClickAt) {
+  let wasMultiTouch = false;
+
   canvas.addEventListener('touchstart', e => {
     if (e.touches.length === 1) {
       dragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; dragDist = 0;
+      wasMultiTouch = false;
+    } else {
+      // Second (or more) finger added — this is never a tap
+      wasMultiTouch = true;
+      dragDist = Infinity;
     }
   }, { passive: true });
+
   canvas.addEventListener('touchmove', e => {
     if (!dragging || e.touches.length !== 1) return;
     const dx = e.touches[0].clientX - lastX, dy = e.touches[0].clientY - lastY;
@@ -60,11 +68,15 @@ export function attachTouchControls(canvas, onClickAt) {
     lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
     updateCamera();
   }, { passive: true });
+
   canvas.addEventListener('touchend', e => {
-    // Higher threshold for touch — fingers move more than mouse cursors
-    if (dragDist < 14 && e.changedTouches.length === 1)
+    // Tap = single finger lifted, ALL fingers now off screen, no multi-touch occurred
+    if (!wasMultiTouch && e.touches.length === 0 && dragDist < 14 && e.changedTouches.length === 1)
       onClickAt(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-    dragging = false;
+    if (e.touches.length === 0) {
+      dragging = false;
+      wasMultiTouch = false;
+    }
   });
 }
 
