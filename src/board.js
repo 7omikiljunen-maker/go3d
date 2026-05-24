@@ -232,3 +232,16 @@ export function doPass() {
 
 export function setGameOver(v) { gameOver = v; }
 export function setLayerVisible(y, v) { layerVisible[y] = v; }
+
+// ─── Apply full state received from Firebase (online multiplayer) ─────────────
+export function applyRemoteState(data) {
+  board             = data.board;
+  current           = data.current;
+  captures          = [data.capturesBlack ?? 0, data.capturesWhite ?? 0];
+  consecutivePasses = data.consecutivePasses ?? 0;
+  gameOver          = data.gameOver ?? false;
+  koState           = data.koState ?? null;
+  lastPlaced        = (data.lastX != null)
+    ? { x: data.lastX, y: data.lastY, z: data.lastZ }
+    : null;
+}
