@@ -100,7 +100,9 @@ export function aiMove(player) {
     .map(([x, y, z]) => ({ move: [x, y, z], h: score1ply(x, y, z, player, board) }))
     .sort((a, b) => b.h - a.h);
 
-  const candidateCount = Math.min(20, scored.length);
+  // Fewer 2-ply candidates for larger boards to stay responsive
+  const maxCandidates = N <= 5 ? 20 : N <= 7 ? 12 : 6;
+  const candidateCount = Math.min(maxCandidates, scored.length);
   const candidates = scored.slice(0, candidateCount);
 
   let best = null, bestScore = -Infinity;
