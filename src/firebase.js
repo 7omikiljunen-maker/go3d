@@ -1,6 +1,7 @@
-// ─── firebase.js — Firebase app + Realtime Database ──────────────────────────
+// ─── firebase.js — Firebase app + Realtime Database + Analytics ───────────────
 import { initializeApp } from 'firebase/app';
 import { getDatabase }   from 'firebase/database';
+import { getAnalytics }  from 'firebase/analytics';
 
 const firebaseConfig = {
   apiKey:            "AIzaSyCFXuYLIzNdiupgnWRBSmialb1BUJ0RBVU",
@@ -15,4 +16,5 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const db = getDatabase(app);
+export const db        = getDatabase(app);
+export const analytics = getAnalytics(app);
