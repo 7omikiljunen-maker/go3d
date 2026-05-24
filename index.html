@@ -99,8 +99,48 @@
       border-radius: 20px; padding: 7px 22px;
       font-size: 13px; cursor: pointer; color: #fff;
     }
+
+    /* ── Help button ── */
+    #helpBtn {
+      position: absolute; bottom: 70px; right: 14px;
+      width: 30px; height: 30px; border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      border: 0.5px solid rgba(255,255,255,0.25);
+      color: #fff; font-size: 15px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      z-index: 10;
+    }
+    @supports (bottom: env(safe-area-inset-bottom)) {
+      #helpBtn { bottom: calc(env(safe-area-inset-bottom) + 16px); }
+    }
+
+    /* ── Help overlay ── */
+    #help-overlay {
+      display: none; position: absolute; inset: 0;
+      background: rgba(10,10,25,0.92);
+      align-items: center; justify-content: center;
+      z-index: 25; overflow-y: auto;
+    }
+    #help-box {
+      background: rgba(30,30,60,0.98);
+      border: 0.5px solid rgba(255,255,255,0.2);
+      border-radius: 16px; padding: 26px 30px;
+      color: #fff; max-width: 380px; width: 90%;
+      margin: 20px auto;
+    }
+    #help-box h2 { font-size: 17px; font-weight: 600; margin-bottom: 14px; text-align: center; }
+    #help-box h3 { font-size: 12px; font-weight: 600; color: rgba(100,160,255,0.9);
+                   letter-spacing: .5px; margin: 14px 0 5px; text-transform: uppercase; }
+    #help-box p  { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.75; }
+    #helpClose {
+      display: block; margin: 20px auto 0;
+      background: rgba(255,255,255,0.12);
+      border: 0.5px solid rgba(255,255,255,0.25);
+      border-radius: 20px; padding: 7px 28px;
+      font-size: 13px; cursor: pointer; color: #fff;
+    }
   </style>
-  <script type="module" crossorigin src="/go3d/assets/index-CrEDKl9l.js"></script>
+  <script type="module" crossorigin src="/go3d/assets/index-DwzZnQnq.js"></script>
 </head>
 <body>
   <div id="app">
@@ -139,6 +179,47 @@
       <button class="action-btn" id="undoBtn">Undo</button>
       <button class="action-btn" id="aiBtn">Computer move ▶</button>
       <button class="action-btn" id="resetBtn">New game</button>
+    </div>
+
+    <button id="helpBtn">?</button>
+
+    <div id="help-overlay">
+      <div id="help-box">
+        <h2>How to play 3D Go</h2>
+
+        <h3>Goal</h3>
+        <p>Score more points than your opponent by capturing their stones and surrounding territory on a cubic grid.</p>
+
+        <h3>Placing stones</h3>
+        <p>Black goes first. Players take turns tapping an empty intersection to place a stone. You cannot skip your turn except by pressing <b>Pass</b>.</p>
+
+        <h3>Liberties &amp; captures</h3>
+        <p>Each stone has up to <b>6 neighbours</b> (left, right, up, down, forward, back). A stone or connected group is captured and removed when all its neighbours are occupied by the opponent — it has no <em>liberties</em> left.</p>
+
+        <h3>Ko rule</h3>
+        <p>You cannot make a move that returns the board to exactly the state it was in one move ago. This prevents infinite loops.</p>
+
+        <h3>Ending the game</h3>
+        <p>The game ends when both players <b>Pass</b> in a row. The player with the higher score wins.</p>
+
+        <h3>Scoring</h3>
+        <p><b>Captures</b> — stones you have taken.<br>
+           <b>Territory</b> — empty intersections completely surrounded by your colour.<br>
+           <b>Komi</b> — White receives +6.5 bonus points to compensate for Black moving first.</p>
+
+        <h3>Controls</h3>
+        <p><b>Tap / click</b> — place a stone.<br>
+           <b>Drag</b> — rotate the board.<br>
+           <b>Scroll / pinch</b> — zoom in and out.<br>
+           <b>L1 – L9</b> — toggle layer visibility to see inside the cube.</p>
+
+        <h3>Modes</h3>
+        <p><b>PvP</b> — two humans, same device.<br>
+           <b>PvC</b> — you play Black, computer plays White.<br>
+           <b>CvC</b> — watch the computer play itself.</p>
+
+        <button id="helpClose">Got it</button>
+      </div>
     </div>
 
     <div id="overlay">
