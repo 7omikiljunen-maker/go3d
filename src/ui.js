@@ -1,9 +1,7 @@
 // ─── ui.js — buttons, panels, overlay ────────────────────────────────────────
-import { N, layerVisible, setLayerVisible, scoringMode, setScoringMode } from './board.js';
-import { buildGrid, dotMeshList, stoneMeshMap, lastMarker, terrGroup, syncLayerVisibility } from './renderer.js';
-import { updateHints } from './renderer.js';
+import { N, layerVisible, setLayerVisible, setScoringMode, scoringMode } from './board.js';
 
-// ─── Layer buttons ───────────────────────────────────────────────────────────
+// ─── Layer buttons ────────────────────────────────────────────────────────────
 export function buildLayerButtons(onLayerToggle) {
   const el = document.getElementById('layers'); el.innerHTML = '';
   for (let y = 0; y < N; y++) {
@@ -22,15 +20,15 @@ export function buildLayerButtons(onLayerToggle) {
   }
 }
 
-// ─── Turn / score display ────────────────────────────────────────────────────
+// ─── Turn / score display ─────────────────────────────────────────────────────
 export function updateUI(current, captures, isComputerTurn) {
   const name   = current === 1 ? '⚫ Black' : '⚪ White';
   const suffix = isComputerTurn() ? ' (computer)' : "'s turn";
-  document.getElementById('turn').textContent  = name + suffix;
-  document.getElementById('score').innerHTML   = `Black: ${captures[0]} | White: ${captures[1]}`;
+  document.getElementById('turn').textContent = name + suffix;
+  document.getElementById('score').innerHTML  = `Black: ${captures[0]} | White: ${captures[1]}`;
 }
 
-// ─── AI button ───────────────────────────────────────────────────────────────
+// ─── Button visibility ────────────────────────────────────────────────────────
 export function updateAiBtn(gameOver, playMode, current) {
   const btn = document.getElementById('aiBtn');
   if (gameOver) { btn.style.display = 'none'; return; }
@@ -39,14 +37,22 @@ export function updateAiBtn(gameOver, playMode, current) {
   btn.style.display = 'none';
 }
 
-// ─── End-game overlay ────────────────────────────────────────────────────────
-export function showOverlay(capB, capW, scoringMode, terrResult) {
-  const totalB = scoringMode === 'captures' ? capB
-               : scoringMode === 'territory' ? terrResult.black
-               : capB + terrResult.black;
-  const totalW = scoringMode === 'captures' ? capW
-               : scoringMode === 'territory' ? terrResult.white
-               : capW + terrResult.white;
+export function updateUndoBtn(historyLen, gameOver, isComputerTurn) {
+  const btn = document.getElementById('undoBtn');
+  btn.disabled = gameOver || historyLen === 0 || isComputerTurn();
+  btn.style.opacity = btn.disabled ? '0.35' : '1';
+}
+
+// ─── End-game overlay ─────────────────────────────────────────────────────────
+export function showOverlay(capB, capW, scoringMode, terrResult, komi) {
+  const terrB = terrResult?.black ?? 0;
+  const terrW = terrResult?.white ?? 0;
+
+  const rawB = scoringMode === 'captures' ? capB : scoringMode === 'territory' ? terrB : capB + terrB;
+  const rawW = scoringMode === 'captures' ? capW : scoringMode === 'territory' ? terrW : capW + terrW;
+
+  const totalB = rawB;
+  const totalW = rawW + komi;
 
   const winner = totalB > totalW ? '⚫ Black wins!'
                : totalW > totalB ? '⚪ White wins!'
@@ -56,7 +62,8 @@ export function showOverlay(capB, capW, scoringMode, terrResult) {
 
   let body = `<b>Captures</b><br>Black: ${capB} &nbsp;|&nbsp; White: ${capW}`;
   if (scoringMode === 'territory' || scoringMode === 'both')
-    body += `<br><br><b>Territory</b><br>Black: ${terrResult.black} &nbsp;|&nbsp; White: ${terrResult.white}<br>Neutral: ${terrResult.neutral}`;
+    body += `<br><br><b>Territory</b><br>Black: ${terrB} &nbsp;|&nbsp; White: ${terrW}<br>Neutral: ${terrResult?.neutral ?? 0}`;
+  body += `<br><br><b>Komi</b>: +${komi} for White`;
   if (scoringMode === 'both')
     body += `<br><br><b>Total</b><br>Black: ${totalB} &nbsp;|&nbsp; White: ${totalW}`;
 
@@ -72,15 +79,17 @@ export function hideOverlay() {
 // ─── Scoring button cycle ─────────────────────────────────────────────────────
 const scoringModes  = ['captures', 'territory', 'both'];
 const scoringLabels = ['Captures only', 'Territory only', 'Captures + territory'];
-let scoringIdx = 2; // start on 'both' to match index.html default label
 
 export function initScoringBtn() {
-  const btn = document.getElementById('scoringBtn');
-  // sync label to initial state
-  btn.textContent = scoringLabels[scoringIdx];
-  btn.onclick = () => {
-    scoringIdx = (scoringIdx + 1) % 3;
-    setScoringMode(scoringModes[scoringIdx]);
-    btn.textContent = scoringLabels[scoringIdx];
+  syncScoringBtn();
+  document.getElementById('scoringBtn').onclick = () => {
+    const idx = (scoringModes.indexOf(scoringMode) + 1) % 3;
+    setScoringMode(scoringModes[idx]);
+    syncScoringBtn();
   };
+}
+
+export function syncScoringBtn() {
+  const idx = scoringModes.indexOf(scoringMode);
+  document.getElementById('scoringBtn').textContent = scoringLabels[idx >= 0 ? idx : 2];
 }

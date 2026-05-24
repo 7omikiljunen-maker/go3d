@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { N, C, SP, OFF, layerVisible, board, computeTerritory } from './board.js';
 
-// ─── Core Three.js objects (exported so controls.js can use camera/renderer) ─
+// ─── Core Three.js objects ────────────────────────────────────────────────────
 export let renderer, camera, scene;
 
 // Groups
@@ -14,9 +14,11 @@ export let lastMarker   = null;
 export let dotMeshList  = [];
 export let intersectionPoints = [];
 
-const animating = [];
+// Animation queues
+const dropAnimating  = [];  // stones dropping in
+const exitAnimating  = [];  // captured stones flying out
 
-// ─── Hint materials (one per player colour) ──────────────────────────────────
+// ─── Hint materials ───────────────────────────────────────────────────────────
 const hintMats = [
   new THREE.MeshPhongMaterial({ color: 0x2255ff, opacity: 0.16, transparent: true, depthWrite: false }),
   new THREE.MeshPhongMaterial({ color: 0x22ddff, opacity: 0.16, transparent: true, depthWrite: false }),
@@ -39,7 +41,6 @@ export function initRenderer(canvas) {
   camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
   camera.lookAt(0, 0, 0);
 
-  // Lighting
   scene.add(new THREE.AmbientLight(0x8888cc, 0.5));
   const sun = new THREE.DirectionalLight(0xffffff, 1.0);
   sun.position.set(6, 12, 8); sun.castShadow = true; scene.add(sun);
@@ -48,7 +49,6 @@ export function initRenderer(canvas) {
   const rim = new THREE.PointLight(0xffffff, 0.4, 60);
   rim.position.set(-6, 6, -6); scene.add(rim);
 
-  // Groups
   gridGroup   = new THREE.Group(); scene.add(gridGroup);
   dotsGroup   = new THREE.Group(); scene.add(dotsGroup);
   hintsGroup  = new THREE.Group(); scene.add(hintsGroup);
@@ -102,7 +102,8 @@ export function clearScene() {
   [gridGroup, dotsGroup, hintsGroup, stonesGroup, terrGroup, markerGroup].forEach(g => {
     while (g.children.length) g.remove(g.children[0]);
   });
-  stoneMeshMap = {}; lastMarker = null; animating.length = 0;
+  stoneMeshMap = {}; lastMarker = null;
+  dropAnimating.length = 0; exitAnimating.length = 0;
   dotMeshList = []; intersectionPoints = [];
 }
 
@@ -121,13 +122,14 @@ export function updateHints(current, gameOver, isComputerTurn, isLegal, koState)
   }
 }
 
-// ─── Stones ──────────────────────────────────────────────────────────────────
+// ─── Stone materials ──────────────────────────────────────────────────────────
 function makeStoneMat(color) {
   return color === 1
     ? new THREE.MeshPhongMaterial({ color: 0x111111, specular: 0x555555, shininess: 120 })
     : new THREE.MeshPhongMaterial({ color: 0xf0ede0, specular: 0x999999, shininess: 160 });
 }
 
+// ─── Add stone with drop animation ───────────────────────────────────────────
 export function addStoneMesh(x, y, z, color) {
   const key = `${x},${y},${z}`;
   const geo = new THREE.SphereGeometry(C.stoneR, 24, 24);
@@ -136,9 +138,9 @@ export function addStoneMesh(x, y, z, color) {
   m.position.set(OFF + x*SP, targetY + 4, OFF + z*SP);
   m.scale.set(0.1, 0.1, 0.1); m.castShadow = true;
   stonesGroup.add(m); stoneMeshMap[key] = m;
-  animating.push({ mesh: m, targetPos: new THREE.Vector3(OFF + x*SP, targetY, OFF + z*SP), t: 0 });
+  dropAnimating.push({ mesh: m, targetPos: new THREE.Vector3(OFF + x*SP, targetY, OFF + z*SP), t: 0 });
 
-  // Last-move ring marker
+  // Last-move ring
   while (markerGroup.children.length) markerGroup.remove(markerGroup.children[0]);
   lastMarker = null;
   const ringMat = new THREE.MeshBasicMaterial({
@@ -151,10 +153,62 @@ export function addStoneMesh(x, y, z, color) {
   markerGroup.add(ring); lastMarker = ring;
 }
 
+// ─── Add stone instantly (used by undo rebuild) ───────────────────────────────
+function addStoneMeshImmediate(x, y, z, color) {
+  const key = `${x},${y},${z}`;
+  const geo = new THREE.SphereGeometry(C.stoneR, 24, 24);
+  const m = new THREE.Mesh(geo, makeStoneMat(color));
+  m.position.set(OFF + x*SP, OFF + y*SP, OFF + z*SP);
+  m.visible = layerVisible[y];
+  m.castShadow = true;
+  stonesGroup.add(m); stoneMeshMap[key] = m;
+}
+
+// ─── Rebuild all stones from board state (used by undo) ───────────────────────
+export function rebuildStoneMeshes(lastPlacedPos) {
+  while (stonesGroup.children.length) stonesGroup.remove(stonesGroup.children[0]);
+  while (markerGroup.children.length) markerGroup.remove(markerGroup.children[0]);
+  stoneMeshMap = {}; lastMarker = null;
+  dropAnimating.length = 0; exitAnimating.length = 0;
+
+  for (let x = 0; x < N; x++) for (let y = 0; y < N; y++) for (let z = 0; z < N; z++) {
+    if (board[x][y][z] !== 0) addStoneMeshImmediate(x, y, z, board[x][y][z]);
+  }
+
+  if (lastPlacedPos) {
+    const { x, y, z } = lastPlacedPos;
+    const color = board[x]?.[y]?.[z];
+    if (color) {
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: color === 1 ? 0x44aaff : 0xff7744,
+        side: THREE.DoubleSide, opacity: 0.9, transparent: true,
+      });
+      const ring = new THREE.Mesh(markerGeo, ringMat);
+      ring.position.set(OFF + x*SP, OFF + y*SP + 0.01, OFF + z*SP);
+      ring.rotation.x = -Math.PI / 2;
+      markerGroup.add(ring); lastMarker = ring;
+    }
+  }
+}
+
+// ─── Remove stones with fly-out animation ─────────────────────────────────────
 export function removeStonesMesh(coords) {
   for (const [x, y, z] of coords) {
     const k = `${x},${y},${z}`;
-    if (stoneMeshMap[k]) { stonesGroup.remove(stoneMeshMap[k]); delete stoneMeshMap[k]; }
+    const mesh = stoneMeshMap[k];
+    if (mesh) {
+      delete stoneMeshMap[k];
+      // Clone material so we can animate opacity independently
+      mesh.material = mesh.material.clone();
+      mesh.material.transparent = true;
+      // Random outward velocity
+      const vel = new THREE.Vector3(
+        (Math.random() - 0.5) * 3,
+        2 + Math.random() * 1.5,
+        (Math.random() - 0.5) * 3
+      );
+      exitAnimating.push({ mesh, vel, t: 0 });
+    }
   }
 }
 
@@ -196,8 +250,10 @@ export function startRenderLoop() {
   function animate() {
     requestAnimationFrame(animate);
     const dt = clock.getDelta();
-    for (let i = animating.length - 1; i >= 0; i--) {
-      const a = animating[i];
+
+    // Stone drop animation
+    for (let i = dropAnimating.length - 1; i >= 0; i--) {
+      const a = dropAnimating[i];
       a.t = Math.min(1, a.t + dt * 5);
       const ease = 1 - Math.pow(1 - a.t, 3);
       a.mesh.position.lerpVectors(
@@ -205,8 +261,23 @@ export function startRenderLoop() {
         a.targetPos, ease
       );
       const s = 0.1 + 0.9 * ease; a.mesh.scale.set(s, s, s);
-      if (a.t >= 1) animating.splice(i, 1);
+      if (a.t >= 1) dropAnimating.splice(i, 1);
     }
+
+    // Capture fly-out animation
+    for (let i = exitAnimating.length - 1; i >= 0; i--) {
+      const a = exitAnimating[i];
+      a.t = Math.min(1, a.t + dt * 2.5);
+      a.mesh.position.addScaledVector(a.vel, dt);
+      const s = Math.max(0, 1 - a.t * 1.4);
+      a.mesh.scale.set(s, s, s);
+      a.mesh.material.opacity = Math.max(0, 1 - a.t * 2);
+      if (a.t >= 1) {
+        stonesGroup.remove(a.mesh);
+        exitAnimating.splice(i, 1);
+      }
+    }
+
     renderer.render(scene, camera);
   }
   animate();

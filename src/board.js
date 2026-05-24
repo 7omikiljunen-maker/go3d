@@ -2,12 +2,15 @@
 
 export let N = 5;
 export let board, current, captures, consecutivePasses, gameOver, koState, lastPlaced, layerVisible;
-export let scoringMode = 'both';   // 'captures' | 'territory' | 'both'
-export let playMode   = 'pvc';     // 'pvp' | 'pvc' | 'cvc'
+export let scoringMode = 'both';
+export let playMode   = 'pvc';
+export let komi       = 6.5;
+export let history    = [];   // undo stack
 
-export function setN(n)            { N = n; }
-export function setScoringMode(m)  { scoringMode = m; }
-export function setPlayMode(m)     { playMode = m; }
+export function setN(n)           { N = n; }
+export function setScoringMode(m) { scoringMode = m; }
+export function setPlayMode(m)    { playMode = m; }
+export function setKomi(k)        { komi = k; }
 
 // ─── Board config per size ───────────────────────────────────────────────────
 export function cfg(n) {
@@ -16,8 +19,8 @@ export function cfg(n) {
   /*  7  */    return { sp: 0.82, stoneR: 0.28, hintR: 0.22, dotR: 0.045, camR: 22 };
 }
 
-export let C  = cfg(5);
-export let SP = C.sp;
+export let C   = cfg(5);
+export let SP  = C.sp;
 export let OFF = -(5 - 1) / 2 * C.sp;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -50,7 +53,7 @@ export function getGroup(brd, x, y, z) {
   }
   return {
     stones: [...visited].map(k => k.split(',').map(Number)),
-    liberties: [...liberties]
+    liberties: [...liberties],
   };
 }
 
@@ -110,6 +113,74 @@ export function legalMoves(player) {
   return moves;
 }
 
+// ─── Undo history ─────────────────────────────────────────────────────────────
+function pushHistory() {
+  history.push({
+    board: board.map(a => a.map(r => [...r])),
+    current,
+    captures: [...captures],
+    koState,
+    lastPlaced: lastPlaced ? { ...lastPlaced } : null,
+    consecutivePasses,
+  });
+  if (history.length > 30) history.shift(); // cap at 30 entries
+}
+
+export function undoMove() {
+  if (history.length === 0) return false;
+  const s = history.pop();
+  board             = s.board;
+  current           = s.current;
+  captures          = s.captures;
+  koState           = s.koState;
+  lastPlaced        = s.lastPlaced;
+  consecutivePasses = s.consecutivePasses;
+  gameOver          = false;
+  return true;
+}
+
+// ─── localStorage save / load ────────────────────────────────────────────────
+export function saveToStorage() {
+  try {
+    localStorage.setItem('go3d_save', JSON.stringify({
+      N, board, current, captures, consecutivePasses,
+      koState, lastPlaced, layerVisible,
+      scoringMode, playMode, komi,
+      history: history.slice(-20),
+    }));
+  } catch (_) {}
+}
+
+export function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem('go3d_save');
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    if (!s || !s.board || !s.N) return false;
+    N                = s.N;
+    board            = s.board;
+    current          = s.current          ?? 1;
+    captures         = s.captures         ?? [0, 0];
+    consecutivePasses= s.consecutivePasses?? 0;
+    koState          = s.koState          ?? null;
+    lastPlaced       = s.lastPlaced       ?? null;
+    layerVisible     = s.layerVisible     ?? Array(N).fill(true);
+    scoringMode      = s.scoringMode      ?? 'both';
+    playMode         = s.playMode         ?? 'pvc';
+    komi             = s.komi             ?? 6.5;
+    history          = s.history          ?? [];
+    gameOver         = false;
+    C   = cfg(N);
+    SP  = C.sp;
+    OFF = -(N - 1) / 2 * SP;
+    return true;
+  } catch (_) { return false; }
+}
+
+export function clearStorage() {
+  localStorage.removeItem('go3d_save');
+}
+
 // ─── Board init ──────────────────────────────────────────────────────────────
 export function initBoard() {
   board = Array(N).fill(null).map(() =>
@@ -118,14 +189,16 @@ export function initBoard() {
   current = 1; captures = [0, 0]; consecutivePasses = 0;
   gameOver = false; koState = null; lastPlaced = null;
   layerVisible = Array(N).fill(true);
+  history = [];
   C = cfg(N); SP = C.sp; OFF = -(N - 1) / 2 * SP;
 }
 
 // ─── Place a stone (mutates module state) ────────────────────────────────────
-// Returns { ok, captured } or { ok: false }
 export function placeStone(x, y, z) {
   if (gameOver || board[x][y][z] !== 0) return { ok: false };
   if (!isLegal(x, y, z, current, board, koState)) return { ok: false };
+
+  pushHistory(); // save snapshot for undo
 
   const prevStr = boardStr(board);
   const brd = board.map(a => a.map(b => [...b]));
@@ -153,7 +226,7 @@ export function doPass() {
   consecutivePasses++;
   current = 3 - current;
   koState = null;
-  return consecutivePasses >= 2; // true → game over
+  return consecutivePasses >= 2;
 }
 
 export function setGameOver(v) { gameOver = v; }
