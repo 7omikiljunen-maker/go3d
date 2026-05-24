@@ -25,7 +25,7 @@ export function attachMouseControls(canvas, onClickAt) {
     dragging = true; lastX = e.clientX; lastY = e.clientY; dragDist = 0;
   });
   window.addEventListener('mouseup', e => {
-    if (dragging && dragDist < 5) onClickAt(e.clientX, e.clientY);
+    if (dragging && dragDist < 6) onClickAt(e.clientX, e.clientY);
     dragging = false;
   });
   window.addEventListener('mousemove', e => {
@@ -61,14 +61,16 @@ export function attachTouchControls(canvas, onClickAt) {
     updateCamera();
   }, { passive: true });
   canvas.addEventListener('touchend', e => {
-    if (dragDist < 5 && e.changedTouches.length === 1)
+    // Higher threshold for touch — fingers move more than mouse cursors
+    if (dragDist < 14 && e.changedTouches.length === 1)
       onClickAt(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
     dragging = false;
   });
 }
 
 // ─── Raycasting ──────────────────────────────────────────────────────────────
-const raycaster = new THREE.Raycaster();
+const raycaster  = new THREE.Raycaster();
+const _closest   = new THREE.Vector3();
 
 export function pickIntersection(cx, cy, canvas) {
   const rect = canvas.getBoundingClientRect();
@@ -77,12 +79,25 @@ export function pickIntersection(cx, cy, canvas) {
     -((cy - rect.top)  / rect.height) * 2 + 1
   );
   raycaster.setFromCamera(mouse, camera);
-  let best = null, bestDist = Infinity;
-  const threshold = C.stoneR * 1.15;
+
+  let best = null, bestScore = Infinity;
+  const threshold = C.stoneR * 1.3; // slightly generous for touch
+
   for (const { x, y, z, pos } of intersectionPoints) {
     if (!layerVisible[y]) continue;
-    const d = raycaster.ray.distanceToPoint(pos);
-    if (d < threshold && d < bestDist) { bestDist = d; best = { x, y, z }; }
+
+    const perpDist = raycaster.ray.distanceToPoint(pos);
+    if (perpDist >= threshold) continue;
+
+    // Among equally-close intersections prefer the one nearer to the camera
+    // so tapping picks the front-facing stone, not one hidden behind it.
+    raycaster.ray.closestPointToPoint(pos, _closest);
+    const depth = raycaster.ray.origin.distanceTo(_closest);
+
+    // Score: perpendicular distance matters most, depth breaks ties
+    const score = perpDist + depth * 0.01;
+    if (score < bestScore) { bestScore = score; best = { x, y, z }; }
   }
+
   return best;
 }
