@@ -299,7 +299,11 @@ export function setSceneBg(hex, isLight = false) {
   lightTheme = isLight;
   renderer.setClearColor(hex, 1);
   if (scene.fog) scene.fog.color.setHex(hex);
-  // Rebuild so grid/dot materials pick up the new colour
-  buildGrid();
-  buildDots();
+  // Only rebuild if initBoard() has already run (layerVisible is an Array).
+  // On first load this is called before setupBoard(), so we skip here and
+  // let setupBoard()/restoreFromSave() call buildGrid()+buildDots() instead.
+  if (Array.isArray(layerVisible)) {
+    buildGrid();
+    buildDots();
+  }
 }
