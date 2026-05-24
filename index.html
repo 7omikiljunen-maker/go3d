@@ -57,10 +57,13 @@
     }
 
     #bottom-ui {
-      position: absolute; bottom: 10px; left: 0; right: 0;
-      bottom: max(10px, env(safe-area-inset-bottom, 10px) + 8px);
+      position: absolute; bottom: 70px; left: 0; right: 0;
       display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
-      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    @supports (padding-bottom: env(safe-area-inset-bottom)) {
+      #bottom-ui {
+        bottom: calc(env(safe-area-inset-bottom) + 16px);
+      }
     }
     .action-btn {
       background: rgba(255,255,255,0.1);
