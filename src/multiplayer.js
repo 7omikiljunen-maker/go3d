@@ -2,7 +2,7 @@
 import { db } from './firebase.js';
 import {
   ref, set, get, update,
-  onValue, onChildAdded, push,
+  onValue, onChildAdded, push, onDisconnect,
 } from 'firebase/database';
 
 // ─── Module state ─────────────────────────────────────────────────────────────
@@ -10,12 +10,14 @@ export let roomCode = null;
 export let myPlayer = null;   // 1 = Black (host)  |  2 = White (guest)
 export let isOnline = false;
 
-let roomRef       = null;
-let chatRef       = null;
-let unsubRoom     = null;
-let unsubChat     = null;
-let localSeq      = 0;
-let guestSeenOnce = false;
+let roomRef              = null;
+let chatRef              = null;
+let unsubRoom            = null;
+let unsubChat            = null;
+let localSeq             = 0;
+let guestSeenOnce        = false;
+let gameStarted          = false;
+let opponentLeftNotified = false;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -72,11 +74,16 @@ export async function createRoom(n, board) {
     lastZ:             null,
   });
 
-  roomCode      = code;
-  myPlayer      = 1;
-  isOnline      = true;
-  localSeq      = 0;
-  guestSeenOnce = false;
+  // If the browser closes unexpectedly, mark host as offline automatically
+  onDisconnect(ref(db, `rooms/${code}/hostOnline`)).set(false);
+
+  roomCode             = code;
+  myPlayer             = 1;
+  isOnline             = true;
+  localSeq             = 0;
+  guestSeenOnce        = false;
+  gameStarted          = false;
+  opponentLeftNotified = false;
   return code;
 }
 
@@ -93,35 +100,51 @@ export async function joinRoom(code) {
 
   await update(r, { guestOnline: true });
 
-  roomRef       = r;
-  chatRef       = ref(db, `rooms/${code}/chat`);
-  roomCode      = code;
-  myPlayer      = 2;
-  isOnline      = true;
-  localSeq      = d.seq ?? 0;
-  guestSeenOnce = false;
+  // If the browser closes unexpectedly, mark guest as offline automatically
+  onDisconnect(ref(db, `rooms/${code}/guestOnline`)).set(false);
+
+  roomRef              = r;
+  chatRef              = ref(db, `rooms/${code}/chat`);
+  roomCode             = code;
+  myPlayer             = 2;
+  isOnline             = true;
+  localSeq             = d.seq ?? 0;
+  guestSeenOnce        = false;
+  gameStarted          = true;  // guest is immediately in-game
+  opponentLeftNotified = false;
 
   return { ok: true, N: d.N, data: d };
 }
 
 // ─── Subscribe to room changes ────────────────────────────────────────────────
 /**
- * onStateChange(remoteData)  — called whenever the opponent pushes a new move.
- * onOpponentJoined()         — called once when the guest first connects (host side).
+ * onStateChange(remoteData)  — opponent pushed a new move.
+ * onOpponentJoined()         — guest connected (host side only).
+ * onOpponentLeft()           — opponent disconnected or clicked Leave.
  */
-export function subscribeRoom(onStateChange, onOpponentJoined) {
+export function subscribeRoom(onStateChange, onOpponentJoined, onOpponentLeft) {
   if (!roomRef) return;
   unsubRoom = onValue(roomRef, snap => {
     if (!snap.exists()) return;
     const d = snap.val();
 
-    // Notify host once when guest arrives
+    // Host: notify once when guest arrives
     if (myPlayer === 1 && d.guestOnline && !guestSeenOnce && onOpponentJoined) {
       guestSeenOnce = true;
+      gameStarted   = true;
       onOpponentJoined();
     }
 
-    // Only apply state if it came from the other player (seq advanced past ours)
+    // Detect opponent disconnect / leave (only after game has started)
+    if (gameStarted && !opponentLeftNotified && onOpponentLeft) {
+      const opponentOnline = myPlayer === 1 ? d.guestOnline : d.hostOnline;
+      if (opponentOnline === false) {
+        opponentLeftNotified = true;
+        onOpponentLeft();
+      }
+    }
+
+    // Apply state if it came from the other player
     if (d.seq > localSeq) {
       localSeq = d.seq;
       onStateChange(d);
@@ -149,6 +172,14 @@ export async function pushGameState({ board, N: n, current, captures,
   });
 }
 
+// ─── Signal leave (write to Firebase before disconnecting) ────────────────────
+/** Call this before leaveRoom() so the opponent is notified. */
+export async function signalLeave() {
+  if (!roomRef || !myPlayer) return;
+  const field = myPlayer === 1 ? 'hostOnline' : 'guestOnline';
+  try { await update(roomRef, { [field]: false }); } catch (_) {}
+}
+
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 export async function sendChat(text) {
   if (!chatRef || !text.trim()) return;
@@ -167,11 +198,13 @@ export function subscribeChat(onNewMessage) {
 export function leaveRoom() {
   if (unsubRoom) { unsubRoom(); unsubRoom = null; }
   if (unsubChat) { unsubChat(); unsubChat = null; }
-  roomRef       = null;
-  chatRef       = null;
-  roomCode      = null;
-  myPlayer      = null;
-  isOnline      = false;
-  localSeq      = 0;
-  guestSeenOnce = false;
+  roomRef              = null;
+  chatRef              = null;
+  roomCode             = null;
+  myPlayer             = null;
+  isOnline             = false;
+  localSeq             = 0;
+  guestSeenOnce        = false;
+  gameStarted          = false;
+  opponentLeftNotified = false;
 }

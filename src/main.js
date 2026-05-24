@@ -34,7 +34,7 @@ import {
 
 import {
   createRoom, joinRoom, subscribeRoom, pushGameState,
-  sendChat, subscribeChat, leaveRoom,
+  sendChat, subscribeChat, signalLeave, leaveRoom,
   roomCode, myPlayer, isOnline, unflattenBoard,
 } from './multiplayer.js';
 
@@ -120,6 +120,13 @@ async function tryPlace(x, y, z) {
     await pushGameState({ board, N, current, captures, consecutivePasses, gameOver, koState, lastPlaced });
   }
   return true;
+}
+
+// ─── Opponent left notification ───────────────────────────────────────────────
+function handleOpponentLeft() {
+  document.getElementById('overlayTitle').textContent = '👋 Opponent left';
+  document.getElementById('overlayBody').textContent  = 'Your opponent has left the game.';
+  document.getElementById('overlay').style.display    = 'flex';
 }
 
 // ─── Apply opponent's move from Firebase ─────────────────────────────────────
@@ -269,8 +276,9 @@ document.getElementById('aiBtn').onclick = () => {
   if (playMode === 'cvc' || (playMode === 'pvc' && current === 2)) doAiMove();
 };
 
-document.getElementById('resetBtn').onclick = () => {
+document.getElementById('resetBtn').onclick = async () => {
   if (isOnline) {
+    await signalLeave();
     leaveRoom();
     exitOnlineMode();
     setPlayMode('pvc');
@@ -281,8 +289,9 @@ document.getElementById('resetBtn').onclick = () => {
   }
 };
 
-document.getElementById('overlayClose').onclick = () => {
+document.getElementById('overlayClose').onclick = async () => {
   if (isOnline) {
+    await signalLeave();
     leaveRoom();
     exitOnlineMode();
     setPlayMode('pvc');
@@ -367,14 +376,14 @@ document.getElementById('createGameBtn').onclick = async () => {
   waitingOvl.style.display = 'flex';
   roomCodeText.textContent = code;
 
-  // Listen: opponent joined
+  // Listen: opponent joined / left
   subscribeRoom(applyOpponentState, () => {
     waitingOvl.style.display = 'none';
     enterOnlineMode();
     syncModeButtons();
     subscribeChat(handleNewChatMsg);
     refreshUI(); refreshHints();
-  });
+  }, handleOpponentLeft);
 };
 
 // ─── Cancel waiting ───────────────────────────────────────────────────────────
@@ -413,7 +422,7 @@ document.getElementById('joinGameBtn').onclick = async () => {
   enterOnlineMode();
   syncModeButtons();
 
-  subscribeRoom(applyOpponentState, null);
+  subscribeRoom(applyOpponentState, null, handleOpponentLeft);
   subscribeChat(handleNewChatMsg);
   refreshUI(); refreshHints();
 };
