@@ -459,7 +459,10 @@ function handleNewChatMsg(msg) {
   }
   div.appendChild(document.createTextNode(msg.text));
   chatMessages.appendChild(div);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
+  // Keep only the last 2 messages — older ones are removed
+  while (chatMessages.children.length > 2) {
+    chatMessages.removeChild(chatMessages.firstChild);
+  }
 
   if (!chatOpen && msg.player !== myPlayer) {
     unreadCount++;
