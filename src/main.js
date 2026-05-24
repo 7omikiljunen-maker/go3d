@@ -74,7 +74,8 @@ function refreshHints() {
 function refreshUI() {
   updateUI(current, captures, isComputerTurn);
   updateAiBtn(gameOver, playMode, current);
-  updateUndoBtn(history.length, gameOver, isComputerTurn);
+  // Disable undo only in CvC (always AI) or online; PvC allows undo at any time
+  updateUndoBtn(history.length, gameOver, playMode === 'cvc' || isOnline);
 }
 
 // ─── Sync UI button active states ────────────────────────────────────────────
@@ -165,13 +166,7 @@ function handleUndo() {
   if (isOnline || gameOver || history.length === 0) return;
   if (playMode === 'cvc') return; // CvC: never allow undo
 
-  if (!undoMove()) return;
-
-  // In PvC: if we just undid the computer's move (it's now computer's turn again),
-  // also undo the human's preceding move so the player can rethink from scratch.
-  if (playMode === 'pvc' && isComputerTurn() && history.length > 0) {
-    undoMove();
-  }
+  if (!undoMove()) return; // always undo exactly one move
 
   rebuildStoneMeshes(lastPlaced);
   syncLayerVisibility(lastPlaced);
