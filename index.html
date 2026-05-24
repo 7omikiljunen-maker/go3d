@@ -228,6 +228,13 @@
       color: var(--green-text); font-weight: 500;
       display: none;
     }
+    /* Light mode: white button base so the button shape is visible,
+       strong green border + text for colour cue */
+    :root[data-theme="light"] #aiBtn {
+      background: rgba(255,255,255,0.88);
+      border-color: rgba(22,163,74,0.60);
+      color: #166534;
+    }
 
     /* ── Icon buttons (help / theme / chat) ──────────────────────────────── */
     #helpBtn, #themeBtn, #chatBtn {
