@@ -13,6 +13,7 @@ import {
 } from './board.js';
 
 import { aiMove } from './ai.js';
+import { playStoneSound, soundEnabled, setSoundEnabled } from './audio.js';
 
 import {
   initRenderer, resizeRenderer, startRenderLoop,
@@ -112,6 +113,7 @@ function exitOnlineMode() {
 async function tryPlace(x, y, z) {
   const result = placeStone(x, y, z);
   if (!result.ok) return false;
+  playStoneSound();
   if (result.captured.length) removeStonesMesh(result.captured);
   addStoneMesh(x, y, z, result.color);
   if (!isOnline) saveToStorage();
@@ -317,6 +319,7 @@ document.querySelectorAll('#sizeButtons button').forEach(btn => {
     setN(newN);
     syncSizeButtons();
     setupBoard();
+    closeSettings(); // close so the player sees the new board
   };
 });
 
@@ -326,6 +329,7 @@ document.querySelectorAll('#modeButtons button[data-mode]').forEach(btn => {
     setPlayMode(btn.dataset.mode);
     syncModeButtons();
     setupBoard();
+    closeSettings();
   };
 });
 
@@ -335,6 +339,7 @@ initScoringBtn();
 let onlineN = 5; // board size chosen in the online modal
 
 document.getElementById('onlineBtn').onclick = () => {
+  closeSettings(); // close settings before opening online modal
   // Sync the modal size selector to current N
   onlineN = N;
   document.querySelectorAll('.online-size-btn').forEach(b => {
@@ -486,15 +491,35 @@ function resize() { resizeRenderer(canvas); }
 resize();
 window.addEventListener('resize', resize);
 
+// ─── Settings panel ───────────────────────────────────────────────────────────
+const settingsModal = document.getElementById('settings-modal');
+
+function openSettings()  { settingsModal.style.display = 'flex'; }
+function closeSettings() { settingsModal.style.display = 'none'; }
+
+document.getElementById('gearBtn').onclick     = openSettings;
+document.getElementById('settingsClose').onclick = closeSettings;
+settingsModal.addEventListener('click', e => { if (e.target === settingsModal) closeSettings(); });
+
+// ──�� Sound toggle ─────────────────────────────────────────────────────────────
+function syncSoundBtn() {
+  document.getElementById('soundBtn').textContent = soundEnabled ? '🔊 On' : '🔇 Off';
+}
+document.getElementById('soundBtn').onclick = () => {
+  setSoundEnabled(!soundEnabled);
+  syncSoundBtn();
+};
+
 // ─── Theme toggle ─────────────────────────────────────────────────────────────
 const BG_DARK  = 0x1a1a2e;
-const BG_LIGHT = 0xe8ecf5;
+const BG_LIGHT = 0xdce3f0;
 
 function applyTheme(name) {
   const isLight = name === 'light';
   document.documentElement.dataset.theme = isLight ? 'light' : '';
   setSceneBg(isLight ? BG_LIGHT : BG_DARK, isLight);
-  document.getElementById('themeBtn').textContent = isLight ? '🌙' : '☀️';
+  // Button shows current state so the user knows what's active
+  document.getElementById('themeBtn').textContent = isLight ? '☀️ Light' : '🌙 Dark';
   localStorage.setItem('go3d-theme', name);
 }
 
@@ -506,6 +531,7 @@ document.getElementById('themeBtn').onclick = () => {
 const savedTheme = localStorage.getItem('go3d-theme') ||
   (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
 applyTheme(savedTheme);
+syncSoundBtn();
 
 // ─── Start — restore saved game or fresh board ────────────────────────────────
 const hadSave = loadFromStorage();

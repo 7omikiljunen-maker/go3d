@@ -98,9 +98,10 @@
     }
 
     /* ── Smooth theme transitions ──────────────────────────────────────────── */
-    body, .pill, .ctrl-btn, .action-btn, #helpBtn, #chatBtn, #themeBtn,
+    body, .pill, .ctrl-btn, .action-btn, #helpBtn, #chatBtn, #gearBtn,
     #chat-panel, #chat-header, .chat-msg, #chatInput,
     #help-overlay, #help-box, #overlay, #overlay-box,
+    #settings-modal, #settings-box, .settings-toggle-btn,
     #online-modal, #waiting-overlay, .online-box, .online-action-btn,
     .online-size-btn, #joinCodeInput, .code-display, #scoringBtn,
     .panel-label, #opponent-banner, #chatSendBtn {
@@ -170,11 +171,14 @@
       background: var(--accent-bg);
       border-color: var(--accent-border);
     }
-    /* Online globe button */
+    /* Full-width online button inside settings */
     #onlineBtn {
+      display: block; width: 100%; padding: 10px;
+      border-radius: 12px;
       background: var(--amber-bg);
-      border-color: var(--amber-border);
+      border: 0.5px solid var(--amber-border);
       color: var(--amber-text);
+      font-size: 13px; cursor: pointer; font-weight: 500;
     }
     #onlineBtn.active {
       background: var(--amber-bg-active);
@@ -183,17 +187,16 @@
     #scoringBtn {
       background: var(--ctrl-bg);
       border: 0.5px solid var(--ctrl-border);
-      border-radius: 12px; padding: 4px 12px;
-      font-size: 11px; cursor: pointer; color: var(--text);
+      border-radius: 12px; padding: 6px 14px;
+      font-size: 12px; cursor: pointer; color: var(--text);
+      width: 100%;
     }
 
-    /* Online mode — lock board size, hide mode/scoring rows */
-    #app.online-mode #sizeButtons button { pointer-events: none; }
-    #app.online-mode #sizeButtons button:not(.active) { opacity: 0.3; }
-    #app.online-mode #modePanelLabel,
-    #app.online-mode #modeButtons    { display: none; }
-    #app.online-mode #scoringPanelLabel,
-    #app.online-mode #scoringBtn     { display: none; }
+    /* Online mode — dim/lock controls inside settings, show room code */
+    #app.online-mode #sizeButtons button,
+    #app.online-mode #modeButtons   { pointer-events: none; opacity: 0.35; }
+    #app.online-mode #scoringBtn    { pointer-events: none; opacity: 0.35; }
+    #app.online-mode #onlineBtn     { display: none; }
     #app.online-mode #roomCodeDisplay { display: flex !important;
       flex-direction: column; align-items: flex-end; gap: 2px; }
     #app.online-mode #undoBtn        { display: none; }
@@ -238,9 +241,9 @@
       color: #166534;
     }
 
-    /* ── Icon buttons (help / theme / chat) ──────────────────────────────── */
+    /* ── Icon buttons (help / gear / chat) ───────────────────────────────── */
     /* Sit in their own row BELOW the action buttons — no overlap possible */
-    #helpBtn, #themeBtn, #chatBtn {
+    #helpBtn, #gearBtn, #chatBtn {
       position: absolute; bottom: 14px;
       width: 30px; height: 30px; border-radius: 50%;
       background: var(--ctrl-bg);
@@ -250,14 +253,14 @@
       z-index: 10;
     }
     @supports (bottom: env(safe-area-inset-bottom)) {
-      #helpBtn, #themeBtn, #chatBtn {
+      #helpBtn, #gearBtn, #chatBtn {
         bottom: calc(env(safe-area-inset-bottom) + 14px);
       }
     }
-    #helpBtn  { right: 14px; }
-    #themeBtn { right: 52px; font-size: 14px; }
-    /* chat is right:90px and only shown online — see online-mode rules above */
-    #chatBtn  { right: 90px; }
+    #helpBtn { right: 14px; }
+    #gearBtn { right: 52px; font-size: 16px; }
+    /* chatBtn right:90px, only shown online */
+    #chatBtn { right: 90px; }
 
     #chatBadge {
       position: absolute; top: -4px; right: -4px;
@@ -327,6 +330,51 @@
       background: var(--accent-bg-active);
       border: none; color: #fff; font-size: 16px; cursor: pointer;
       flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ── Settings modal ─────────────────────────────────────────────────── */
+    #settings-modal {
+      display: none; position: absolute; inset: 0;
+      background: var(--backdrop);
+      align-items: center; justify-content: center;
+      z-index: 25; overflow-y: auto;
+    }
+    #settings-box {
+      background: var(--surface);
+      border: 0.5px solid var(--surface-border);
+      border-radius: 16px; padding: 24px 26px;
+      color: var(--text); max-width: 320px; width: 90%;
+      margin: 20px auto;
+    }
+    #settings-box h2 {
+      font-size: 17px; font-weight: 600; margin-bottom: 20px; text-align: center;
+    }
+    .settings-section {
+      margin-bottom: 18px;
+    }
+    .settings-section-label {
+      font-size: 10px; color: var(--text-faint);
+      letter-spacing: .5px; margin-bottom: 8px;
+    }
+    /* Row with label on left, toggle button on right */
+    .settings-inline {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .settings-inline .settings-section-label { margin-bottom: 0; }
+    .settings-toggle-btn {
+      background: var(--ctrl-bg);
+      border: 0.5px solid var(--ctrl-border);
+      border-radius: 20px; padding: 5px 14px;
+      font-size: 12px; cursor: pointer; color: var(--text);
+      white-space: nowrap;
+    }
+    #settingsClose {
+      display: block; margin: 6px auto 0;
+      background: var(--ctrl-bg);
+      border: 0.5px solid var(--ctrl-border);
+      border-radius: 20px; padding: 7px 28px;
+      font-size: 13px; cursor: pointer; color: var(--text);
     }
 
     /* ── Help overlay ────────────────────────────────────────────────────── */
@@ -496,30 +544,10 @@
       <div id="layers"></div>
     </div>
 
-    <!-- ── Right panel ───────────────────────────────────────────────────── -->
+    <!-- ── Right panel — room code only (online mode) ──────────────────── -->
     <div id="right-panel">
-      <div class="panel-label">BOARD</div>
-      <div class="btn-group" id="sizeButtons">
-        <button class="ctrl-btn" data-size="3">3³</button>
-        <button class="ctrl-btn active" data-size="5">5³</button>
-        <button class="ctrl-btn" data-size="7">7³</button>
-        <button class="ctrl-btn" data-size="9">9³</button>
-      </div>
-
-      <div class="panel-label" id="modePanelLabel" style="margin-top:2px">MODE</div>
-      <div class="btn-group" id="modeButtons">
-        <button class="ctrl-btn" data-mode="pvp">PvP</button>
-        <button class="ctrl-btn active" data-mode="pvc">PvC</button>
-        <button class="ctrl-btn" data-mode="cvc">CvC</button>
-        <button class="ctrl-btn" id="onlineBtn">🌐</button>
-      </div>
-
-      <div class="panel-label" id="scoringPanelLabel" style="margin-top:2px">SCORING</div>
-      <button id="scoringBtn">Captures + territory</button>
-
-      <!-- Shown only in online mode -->
       <div id="roomCodeDisplay">
-        <div class="panel-label" style="margin-top:2px">ROOM</div>
+        <div class="panel-label">ROOM</div>
         <div class="room-code-pill" id="roomCodeText"></div>
       </div>
     </div>
@@ -538,8 +566,8 @@
       <span id="chatBadge"></span>
     </button>
 
-    <!-- ── Theme toggle ──────────────────────────────────────────────────── -->
-    <button id="themeBtn" title="Toggle dark / light mode">☀️</button>
+    <!-- ── Settings gear button ──────────────────────────────────────────── -->
+    <button id="gearBtn" title="Settings">⚙️</button>
 
     <!-- ── Help button ───────────────────────────────────────────────────── -->
     <button id="helpBtn">?</button>
@@ -554,6 +582,59 @@
       <div id="chat-input-row">
         <input id="chatInput" placeholder="Message…" maxlength="200"/>
         <button id="chatSendBtn">↑</button>
+      </div>
+    </div>
+
+    <!-- ── Settings modal ───────────────────────────────────────────────── -->
+    <div id="settings-modal">
+      <div id="settings-box">
+        <h2>⚙️ Settings</h2>
+
+        <!-- Board size -->
+        <div class="settings-section">
+          <div class="settings-section-label">BOARD SIZE</div>
+          <div class="btn-group" id="sizeButtons">
+            <button class="ctrl-btn" data-size="3">3³</button>
+            <button class="ctrl-btn active" data-size="5">5³</button>
+            <button class="ctrl-btn" data-size="7">7³</button>
+            <button class="ctrl-btn" data-size="9">9³</button>
+          </div>
+        </div>
+
+        <!-- Game mode -->
+        <div class="settings-section">
+          <div class="settings-section-label">GAME MODE</div>
+          <div class="btn-group" id="modeButtons">
+            <button class="ctrl-btn" data-mode="pvp">PvP</button>
+            <button class="ctrl-btn active" data-mode="pvc">PvC</button>
+            <button class="ctrl-btn" data-mode="cvc">CvC</button>
+          </div>
+        </div>
+
+        <!-- Online — full-width prominent button -->
+        <div class="settings-section">
+          <button id="onlineBtn">🌐 Play Online →</button>
+        </div>
+
+        <!-- Scoring -->
+        <div class="settings-section">
+          <div class="settings-section-label">SCORING</div>
+          <button id="scoringBtn">Captures + territory</button>
+        </div>
+
+        <!-- Sound toggle -->
+        <div class="settings-inline">
+          <span class="settings-section-label">SOUND</span>
+          <button id="soundBtn" class="settings-toggle-btn">🔊 On</button>
+        </div>
+
+        <!-- Theme toggle -->
+        <div class="settings-inline">
+          <span class="settings-section-label">THEME</span>
+          <button id="themeBtn" class="settings-toggle-btn">🌙 Dark</button>
+        </div>
+
+        <button id="settingsClose">Done</button>
       </div>
     </div>
 
@@ -588,20 +669,20 @@
            <b>Scroll / pinch</b> — zoom in and out.<br>
            <b>L1 – L9</b> — toggle layer visibility to see inside the cube.</p>
 
+        <h3>Settings ⚙️</h3>
+        <p>Tap <b>⚙️</b> (bottom-right) to open settings: board size, game mode, scoring, sound, and theme. Changes to board size or mode start a new game immediately.</p>
+
         <h3>Modes</h3>
         <p><b>PvP</b> — two humans, same device.<br>
            <b>PvC</b> — you play Black, computer plays White.<br>
            <b>CvC</b> — watch the computer play itself.<br>
-           <b>🌐 Online</b> — play against a friend on another device.</p>
+           <b>🌐 Online</b> — play against a friend on another device (in settings).</p>
 
         <h3>Playing online</h3>
-        <p>Tap <b>🌐</b> in the MODE row to open the online menu.<br><br>
+        <p>Open <b>⚙️ Settings</b> and tap <b>🌐 Play Online →</b>.<br><br>
            <b>To host:</b> choose a board size, tap <b>✦ Create game</b>, then share the 6-letter code with your friend.<br><br>
            <b>To join:</b> enter the code your friend shared and tap <b>Join game →</b>.<br><br>
            You play <b>Black</b> as host, <b>White</b> as guest. Moves sync instantly. Use <b>💬</b> to open the chat panel during the game. Tap <b>Leave</b> to exit the room.</p>
-
-        <h3>Dark / light mode</h3>
-        <p>Tap the <b>☀️ / 🌙</b> button (bottom-right, next to <b>?</b>) to switch between dark and light themes. Your preference is saved automatically.</p>
 
         <button id="helpClose">Got it</button>
       </div>
