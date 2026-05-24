@@ -282,3 +282,9 @@ export function startRenderLoop() {
   }
   animate();
 }
+
+// ─── Theme: update Three.js background & fog color ───────────────────────────
+export function setSceneBg(hex) {
+  renderer.setClearColor(hex, 1);
+  if (scene.fog) scene.fog.color.setHex(hex);
+}

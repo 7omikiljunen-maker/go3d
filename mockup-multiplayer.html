@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Multiplayer Mockup</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#1a1a2e; font-family:sans-serif; color:#fff; }
+
+  /* ── Screen switcher ───────────────────────────────────────── */
+  .screen { display:none; width:375px; height:812px; position:relative;
+            background:#1a1a2e; margin:0 auto; overflow:hidden; border:1px solid #333; }
+  .screen.active { display:block; }
+
+  /* ── Shared game chrome (same as real app) ─────────────────── */
+  #top-ui {
+    position:absolute; top:10px; left:0; right:0;
+    display:flex; justify-content:center; gap:7px; flex-wrap:wrap; padding:0 8px; z-index:5;
+  }
+  .pill { background:rgba(255,255,255,0.12); border:0.5px solid rgba(255,255,255,0.2);
+          border-radius:20px; padding:5px 14px; font-size:13px; }
+
+  #left-panel { position:absolute; top:48px; left:10px; display:flex; flex-direction:column; gap:4px; z-index:5; }
+  .panel-label { font-size:10px; color:rgba(255,255,255,0.45); letter-spacing:.5px; margin-bottom:2px; }
+  .layer-btn { background:rgba(255,255,255,0.1); border:0.5px solid rgba(255,255,255,0.25);
+               border-radius:10px; padding:3px 9px; font-size:11px; color:#fff; cursor:pointer; }
+
+  #right-panel { position:absolute; top:48px; right:10px;
+                 display:flex; flex-direction:column; gap:6px; align-items:flex-end; z-index:5; }
+  .btn-group { display:flex; gap:4px; }
+  .ctrl-btn { background:rgba(255,255,255,0.1); border:0.5px solid rgba(255,255,255,0.25);
+              border-radius:10px; padding:4px 10px; font-size:11px; cursor:pointer; color:#fff; }
+  .ctrl-btn.active { background:rgba(100,160,255,0.3); border-color:rgba(100,160,255,0.6); }
+  /* Online button — highlighted in amber to stand out */
+  .ctrl-btn.online { background:rgba(250,180,50,0.2); border-color:rgba(250,180,50,0.5); color:#fbbf24; }
+
+  #bottom-ui { position:absolute; bottom:60px; left:0; right:0;
+               display:flex; justify-content:center; gap:8px; flex-wrap:wrap; z-index:5; }
+  .action-btn { background:rgba(255,255,255,0.1); border:0.5px solid rgba(255,255,255,0.25);
+                border-radius:20px; padding:6px 16px; font-size:13px; cursor:pointer; color:#fff; }
+
+  /* ── Fake board ────────────────────────────────────────────── */
+  .fake-board { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+  .fake-board svg { opacity:0.55; }
+
+  /* ── Tooltip / callout ─────────────────────────────────────── */
+  .callout {
+    position:absolute; top:108px; right:8px; z-index:20;
+    background:rgba(251,191,36,0.15); border:1px solid rgba(251,191,36,0.5);
+    border-radius:10px; padding:8px 12px; font-size:12px; color:#fbbf24;
+    max-width:160px; text-align:center; line-height:1.4;
+  }
+  .callout::before {
+    content:''; position:absolute; top:-8px; right:28px;
+    border-left:8px solid transparent; border-right:8px solid transparent;
+    border-bottom:8px solid rgba(251,191,36,0.5);
+  }
+
+  /* ── Online room overlay ───────────────────────────────────── */
+  .modal-bg { position:absolute; inset:0; background:rgba(10,10,25,0.9);
+              display:flex; align-items:center; justify-content:center; z-index:30; }
+  .modal { background:rgba(30,30,60,0.98); border:0.5px solid rgba(255,255,255,0.2);
+           border-radius:16px; padding:28px 26px; width:310px; text-align:center; }
+  .modal h2 { font-size:17px; font-weight:600; margin-bottom:6px; }
+  .modal p  { font-size:12px; color:rgba(255,255,255,0.55); margin-bottom:20px; }
+
+  .modal-btn { display:block; width:100%; padding:11px; border-radius:12px; border:none;
+               font-size:14px; cursor:pointer; margin-bottom:10px; font-weight:500; }
+  .modal-btn.primary { background:rgba(100,160,255,0.35); border:0.5px solid rgba(100,160,255,0.6); color:#fff; }
+  .modal-btn.secondary { background:rgba(255,255,255,0.08); border:0.5px solid rgba(255,255,255,0.2); color:#fff; }
+
+  /* Board size picker inside the modal */
+  .size-row { display:flex; gap:8px; justify-content:center; margin-bottom:20px; }
+  .size-btn { background:rgba(255,255,255,0.08); border:0.5px solid rgba(255,255,255,0.2);
+              border-radius:10px; padding:6px 14px; font-size:13px; color:#fff; cursor:pointer; }
+  .size-btn.active { background:rgba(100,160,255,0.3); border-color:rgba(100,160,255,0.6); }
+
+  .divider { display:flex; align-items:center; gap:10px; margin:6px 0 16px;
+             font-size:11px; color:rgba(255,255,255,0.3); }
+  .divider::before, .divider::after { content:''; flex:1; height:0.5px; background:rgba(255,255,255,0.15); }
+
+  .code-input { width:100%; background:rgba(255,255,255,0.07); border:0.5px solid rgba(255,255,255,0.25);
+                border-radius:10px; padding:11px 14px; color:#fff; font-size:20px;
+                letter-spacing:6px; text-align:center; margin-bottom:10px; outline:none; }
+  .code-input::placeholder { letter-spacing:2px; font-size:13px; color:rgba(255,255,255,0.3); }
+
+  /* ── Waiting state ─────────────────────────────────────────── */
+  .room-code-display { background:rgba(100,160,255,0.12); border:0.5px solid rgba(100,160,255,0.4);
+                       border-radius:12px; padding:16px; margin-bottom:20px; }
+  .room-code-display .label { font-size:11px; color:rgba(255,255,255,0.45); margin-bottom:6px; }
+  .room-code-display .code  { font-size:32px; font-weight:700; letter-spacing:10px; color:#7ab4ff; }
+
+  .waiting-dots { display:flex; gap:6px; justify-content:center; margin:16px 0; }
+  .waiting-dots span { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.3); animation:pulse 1.2s infinite; }
+  .waiting-dots span:nth-child(2) { animation-delay:.2s; }
+  .waiting-dots span:nth-child(3) { animation-delay:.4s; }
+  @keyframes pulse { 0%,80%,100%{opacity:.3} 40%{opacity:1} }
+
+  /* ── Opponent banner ───────────────────────────────────────── */
+  .opponent-bar { position:absolute; top:10px; left:50%; transform:translateX(-50%);
+                  background:rgba(80,200,120,0.15); border:0.5px solid rgba(80,200,120,0.4);
+                  border-radius:20px; padding:4px 12px; font-size:11px; color:#aef5c0;
+                  white-space:nowrap; z-index:10; display:flex; align-items:center; gap:5px; }
+  .dot-green { width:6px; height:6px; border-radius:50%; background:#4ade80; flex-shrink:0; }
+
+  /* ── Chat button ───────────────────────────────────────────── */
+  .chat-btn { position:absolute; bottom:60px; right:14px; width:44px; height:44px;
+              border-radius:50%; background:rgba(255,255,255,0.1);
+              border:0.5px solid rgba(255,255,255,0.25);
+              display:flex; align-items:center; justify-content:center;
+              cursor:pointer; z-index:10; font-size:20px; }
+  .chat-badge { position:absolute; top:-4px; right:-4px; width:18px; height:18px;
+                border-radius:50%; background:#ef4444; font-size:10px; font-weight:700;
+                display:flex; align-items:center; justify-content:center; }
+
+  /* ── Chat panel ────────────────────────────────────────────── */
+  .chat-panel { position:absolute; bottom:0; left:0; right:0; height:360px;
+                background:rgba(20,20,45,0.98); border-top:0.5px solid rgba(255,255,255,0.15);
+                border-radius:20px 20px 0 0; z-index:20; display:flex; flex-direction:column; }
+  .chat-header { padding:14px 16px 10px; display:flex; justify-content:space-between; align-items:center;
+                 border-bottom:0.5px solid rgba(255,255,255,0.1); }
+  .chat-header span { font-size:14px; font-weight:600; }
+  .chat-close { background:none; border:none; color:rgba(255,255,255,0.5); font-size:20px; cursor:pointer; }
+
+  .chat-messages { flex:1; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:8px; }
+  .msg { max-width:75%; padding:8px 12px; border-radius:14px; font-size:13px; line-height:1.4; }
+  .msg.mine    { align-self:flex-end; background:rgba(100,160,255,0.3); border:0.5px solid rgba(100,160,255,0.4); }
+  .msg.theirs  { align-self:flex-start; background:rgba(255,255,255,0.1); border:0.5px solid rgba(255,255,255,0.15); }
+  .msg .sender { font-size:10px; color:rgba(255,255,255,0.4); margin-bottom:3px; }
+
+  .chat-input-row { padding:10px 12px 20px; display:flex; gap:8px; align-items:center;
+                    border-top:0.5px solid rgba(255,255,255,0.1); }
+  .chat-input { flex:1; background:rgba(255,255,255,0.08); border:0.5px solid rgba(255,255,255,0.2);
+                border-radius:20px; padding:8px 14px; color:#fff; font-size:13px; outline:none; }
+  .chat-input::placeholder { color:rgba(255,255,255,0.3); }
+  .chat-send { width:34px; height:34px; border-radius:50%; background:rgba(100,160,255,0.4);
+               border:none; color:#fff; font-size:16px; cursor:pointer;
+               display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+
+  /* ── Nav ───────────────────────────────────────────────────── */
+  .nav { display:flex; justify-content:center; gap:6px; padding:10px 8px 12px; flex-wrap:wrap; }
+  .nav button { background:rgba(255,255,255,0.1); border:0.5px solid rgba(255,255,255,0.25);
+                border-radius:20px; padding:5px 12px; color:#fff; font-size:11px; cursor:pointer; }
+  .nav button.active { background:rgba(100,160,255,0.3); border-color:rgba(100,160,255,0.6); }
+  .nav-label { text-align:center; font-size:11px; color:rgba(255,255,255,0.4); padding-top:10px; }
+</style>
+</head>
+<body>
+
+<div class="nav-label">← tap to switch screens →</div>
+<div class="nav">
+  <button class="active" onclick="show(0)">0 · Lobby</button>
+  <button onclick="show(1)">1 · Room</button>
+  <button onclick="show(2)">2 · Waiting</button>
+  <button onclick="show(3)">3 · In-game</button>
+  <button onclick="show(4)">4 · Chat open</button>
+</div>
+
+<!-- shared SVG board lines snippet (reused in multiple screens) -->
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SCREEN 0 — Normal game lobby (entry point for Online)      -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="screen active" id="s0">
+  <div class="fake-board">
+    <svg width="300" height="300" viewBox="0 0 300 300">
+      <line x1="150" y1="20" x2="280" y2="95"  stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="150" y1="20" x2="20"  y2="95"  stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="150" y1="55" x2="260" y2="115" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="150" y1="55" x2="40"  y2="115" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="150" y1="90" x2="240" y2="135" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="150" y1="90" x2="60"  y2="135" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="150" y1="125" x2="220" y2="155" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="150" y1="125" x2="80"  y2="155" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="20"  y1="95"  x2="60"  y2="230" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="60"  y1="73"  x2="100" y2="208" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="100" y1="51"  x2="140" y2="186" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="140" y1="29"  x2="180" y2="164" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="180" y1="29"  x2="220" y2="164" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="220" y1="51"  x2="260" y2="186" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="280" y1="95"  x2="240" y2="230" stroke="#4466aa" stroke-width="0.8"/>
+    </svg>
+  </div>
+
+  <!-- Top bar -->
+  <div id="top-ui">
+    <div class="pill">⚫ Black's turn</div>
+    <div class="pill" style="color:rgba(255,255,255,0.8)">Black: 0 | White: 0</div>
+  </div>
+
+  <!-- Left panel -->
+  <div id="left-panel">
+    <div class="panel-label">LAYERS</div>
+    <button class="layer-btn">L1</button>
+    <button class="layer-btn">L2</button>
+    <button class="layer-btn">L3</button>
+    <button class="layer-btn">L4</button>
+    <button class="layer-btn">L5</button>
+  </div>
+
+  <!-- Right panel — note the 🌐 Online button -->
+  <div id="right-panel">
+    <div class="panel-label">BOARD</div>
+    <div class="btn-group">
+      <button class="ctrl-btn">3³</button>
+      <button class="ctrl-btn active">5³</button>
+      <button class="ctrl-btn">7³</button>
+      <button class="ctrl-btn">9³</button>
+    </div>
+    <div class="panel-label" style="margin-top:4px">MODE</div>
+    <div class="btn-group">
+      <button class="ctrl-btn active">PvP</button>
+      <button class="ctrl-btn">PvC</button>
+      <button class="ctrl-btn">CvC</button>
+      <!-- ← THIS is the entry point for online play -->
+      <button class="ctrl-btn online" onclick="show(1)">🌐</button>
+    </div>
+  </div>
+
+  <!-- Bottom buttons -->
+  <div id="bottom-ui">
+    <button class="action-btn">Pass</button>
+    <button class="action-btn">Undo</button>
+    <button class="action-btn">Computer</button>
+    <button class="action-btn">New</button>
+  </div>
+
+  <!-- Callout pointing at the Online button -->
+  <div class="callout">
+    Tap 🌐 here to start or join an online game
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SCREEN 1 — Create or join room                            -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="screen" id="s1">
+  <div class="fake-board">
+    <svg width="280" height="280" viewBox="0 0 280 280">
+      <line x1="140" y1="20" x2="260" y2="90" stroke="#4466aa" stroke-width="0.7"/>
+      <line x1="140" y1="20" x2="20"  y2="90" stroke="#4466aa" stroke-width="0.7"/>
+      <line x1="140" y1="50" x2="248" y2="110" stroke="#4466aa" stroke-width="0.7"/>
+      <line x1="140" y1="50" x2="32"  y2="110" stroke="#4466aa" stroke-width="0.7"/>
+      <line x1="140" y1="80" x2="236" y2="130" stroke="#4466aa" stroke-width="0.7"/>
+      <line x1="140" y1="80" x2="44"  y2="130" stroke="#4466aa" stroke-width="0.7"/>
+      <line x1="20"  y1="90"  x2="68"  y2="230" stroke="#4466aa" stroke-width="0.7"/>
+      <line x1="260" y1="90"  x2="212" y2="230" stroke="#4466aa" stroke-width="0.7"/>
+    </svg>
+  </div>
+
+  <div class="modal-bg">
+    <div class="modal">
+      <h2>Play Online</h2>
+      <p>Create a game and share the code,<br>or join a friend's game</p>
+
+      <!-- Board size chosen by host before creating -->
+      <div class="panel-label" style="margin-bottom:8px; text-align:left">BOARD SIZE</div>
+      <div class="size-row">
+        <button class="size-btn">3³</button>
+        <button class="size-btn active">5³</button>
+        <button class="size-btn">7³</button>
+        <button class="size-btn">9³</button>
+      </div>
+
+      <button class="modal-btn primary" onclick="show(2)">✦ Create game</button>
+
+      <div class="divider">or join with a code</div>
+
+      <input class="code-input" placeholder="Enter code" maxlength="6"/>
+      <button class="modal-btn secondary">Join game →</button>
+
+      <button class="modal-btn secondary" style="margin-top:4px; color:rgba(255,255,255,0.4); font-size:12px"
+              onclick="show(0)">← Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SCREEN 2 — Waiting for opponent                           -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="screen" id="s2">
+  <div class="fake-board" style="opacity:0.3">
+    <svg width="280" height="280" viewBox="0 0 280 280">
+      <line x1="140" y1="20" x2="260" y2="90" stroke="#4466aa" stroke-width="0.7"/>
+      <line x1="140" y1="20" x2="20"  y2="90" stroke="#4466aa" stroke-width="0.7"/>
+      <line x1="140" y1="50" x2="248" y2="110" stroke="#4466aa" stroke-width="0.7"/>
+      <line x1="140" y1="50" x2="32"  y2="110" stroke="#4466aa" stroke-width="0.7"/>
+      <line x1="20"  y1="90"  x2="68"  y2="230" stroke="#4466aa" stroke-width="0.7"/>
+      <line x1="260" y1="90"  x2="212" y2="230" stroke="#4466aa" stroke-width="0.7"/>
+    </svg>
+  </div>
+
+  <div class="modal-bg">
+    <div class="modal">
+      <h2>Game created!</h2>
+      <p>Share this code with your opponent</p>
+
+      <div class="room-code-display">
+        <div class="label">ROOM CODE</div>
+        <div class="code">X7K2M9</div>
+      </div>
+
+      <p style="font-size:12px; color:rgba(255,255,255,0.4); margin-bottom:12px">
+        Waiting for opponent to join…
+      </p>
+      <div class="waiting-dots">
+        <span></span><span></span><span></span>
+      </div>
+
+      <button class="modal-btn secondary" style="margin-top:16px" onclick="show(1)">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SCREEN 3 — In-game, chat closed                           -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="screen" id="s3">
+  <div class="fake-board">
+    <svg width="300" height="300" viewBox="0 0 300 300">
+      <line x1="150" y1="20" x2="280" y2="95"  stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="150" y1="20" x2="20"  y2="95"  stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="150" y1="55" x2="260" y2="115" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="150" y1="55" x2="40"  y2="115" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="150" y1="90" x2="240" y2="135" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="150" y1="90" x2="60"  y2="135" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="150" y1="125" x2="220" y2="155" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="150" y1="125" x2="80"  y2="155" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="20"  y1="95"  x2="60"  y2="230" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="60"  y1="73"  x2="100" y2="208" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="100" y1="51"  x2="140" y2="186" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="140" y1="29"  x2="180" y2="164" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="180" y1="29"  x2="220" y2="164" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="220" y1="51"  x2="260" y2="186" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="280" y1="95"  x2="240" y2="230" stroke="#4466aa" stroke-width="0.8"/>
+      <circle cx="150" cy="90"  r="10" fill="#111" stroke="#333" stroke-width="1"/>
+      <circle cx="190" cy="112" r="10" fill="#f0ede0" stroke="#ccc" stroke-width="1"/>
+      <circle cx="110" cy="112" r="10" fill="#111" stroke="#333" stroke-width="1"/>
+      <circle cx="110" cy="112" r="13" fill="none" stroke="#44aaff" stroke-width="1.5" opacity="0.8"/>
+    </svg>
+  </div>
+
+  <!-- Top info bar — opponent connected banner sits here -->
+  <div id="top-ui">
+    <div class="pill">⚫ Your turn</div>
+    <div class="pill" style="color:rgba(255,255,255,0.8)">Black: 1 | White: 0</div>
+  </div>
+  <div class="opponent-bar" style="top:44px">
+    <div class="dot-green"></div>
+    Opponent connected
+  </div>
+
+  <!-- Left panel -->
+  <div id="left-panel">
+    <div class="panel-label">LAYERS</div>
+    <button class="layer-btn">L1</button>
+    <button class="layer-btn">L2</button>
+    <button class="layer-btn">L3</button>
+    <button class="layer-btn">L4</button>
+    <button class="layer-btn">L5</button>
+  </div>
+
+  <!-- Right panel — board size locked, room code shown -->
+  <div id="right-panel">
+    <div class="panel-label">BOARD</div>
+    <div class="btn-group">
+      <button class="ctrl-btn active" disabled>5³</button>
+    </div>
+    <div class="panel-label" style="margin-top:4px">ROOM</div>
+    <div style="font-size:13px; font-weight:700; letter-spacing:5px; color:#7ab4ff; padding:2px 4px">X7K2M9</div>
+  </div>
+
+  <!-- Bottom buttons (no Computer move in online mode) -->
+  <div id="bottom-ui">
+    <button class="action-btn">Pass</button>
+    <button class="action-btn">Undo</button>
+    <button class="action-btn">Resign</button>
+  </div>
+
+  <!-- Chat button with unread badge -->
+  <div class="chat-btn" onclick="show(4)">
+    💬
+    <div class="chat-badge">1</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SCREEN 4 — Chat panel open                                -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="screen" id="s4">
+  <div class="fake-board">
+    <svg width="300" height="300" viewBox="0 0 300 300">
+      <line x1="150" y1="20" x2="280" y2="95"  stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="150" y1="20" x2="20"  y2="95"  stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="150" y1="55" x2="260" y2="115" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="150" y1="55" x2="40"  y2="115" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="150" y1="90" x2="240" y2="135" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="150" y1="90" x2="60"  y2="135" stroke="#4466aa" stroke-width="0.8"/>
+      <line x1="20"  y1="95"  x2="60"  y2="230" stroke="#4466aa" stroke-width="0.7"/>
+      <line x1="280" y1="95"  x2="240" y2="230" stroke="#4466aa" stroke-width="0.7"/>
+      <circle cx="150" cy="90"  r="10" fill="#111" stroke="#333" stroke-width="1"/>
+      <circle cx="190" cy="112" r="10" fill="#f0ede0" stroke="#ccc" stroke-width="1"/>
+      <circle cx="110" cy="112" r="10" fill="#111" stroke="#333" stroke-width="1"/>
+    </svg>
+  </div>
+
+  <div id="top-ui">
+    <div class="pill">⚫ Your turn</div>
+    <div class="pill" style="color:rgba(255,255,255,0.8)">Black: 1 | White: 0</div>
+  </div>
+
+  <div id="left-panel">
+    <div class="panel-label">LAYERS</div>
+    <button class="layer-btn">L1</button>
+    <button class="layer-btn">L2</button>
+    <button class="layer-btn">L3</button>
+  </div>
+
+  <!-- Chat panel slides up from bottom -->
+  <div class="chat-panel">
+    <div class="chat-header">
+      <span>💬 Chat</span>
+      <button class="chat-close" onclick="show(3)">×</button>
+    </div>
+
+    <div class="chat-messages">
+      <div class="msg theirs">
+        <div class="sender">Opponent</div>
+        Good luck! 🤝
+      </div>
+      <div class="msg mine">
+        Thanks, you too!
+      </div>
+      <div class="msg theirs">
+        <div class="sender">Opponent</div>
+        Nice move 👀
+      </div>
+    </div>
+
+    <div class="chat-input-row">
+      <input class="chat-input" placeholder="Message…"/>
+      <button class="chat-send">↑</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function show(i) {
+    document.querySelectorAll('.screen').forEach((s,j) => s.classList.toggle('active', j===i));
+    document.querySelectorAll('.nav button').forEach((b,j) => b.classList.toggle('active', j===i));
+    window.scrollTo(0,0);
+  }
+
+  // Size picker in the modal
+  document.querySelectorAll('.size-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

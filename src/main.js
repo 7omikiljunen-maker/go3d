@@ -19,6 +19,7 @@ import {
   buildGrid, buildDots, clearScene,
   addStoneMesh, removeStonesMesh, rebuildStoneMeshes,
   updateHints, showTerritory, syncLayerVisibility,
+  setSceneBg,
   camera,
 } from './renderer.js';
 
@@ -484,6 +485,27 @@ attachTouchControls(canvas, handleClickAt);
 function resize() { resizeRenderer(canvas); }
 resize();
 window.addEventListener('resize', resize);
+
+// ─── Theme toggle ─────────────────────────────────────────────────────────────
+const BG_DARK  = 0x1a1a2e;
+const BG_LIGHT = 0xe8ecf5;
+
+function applyTheme(name) {
+  const isLight = name === 'light';
+  document.documentElement.dataset.theme = isLight ? 'light' : '';
+  setSceneBg(isLight ? BG_LIGHT : BG_DARK);
+  document.getElementById('themeBtn').textContent = isLight ? '🌙' : '☀️';
+  localStorage.setItem('go3d-theme', name);
+}
+
+document.getElementById('themeBtn').onclick = () => {
+  applyTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light');
+};
+
+// Restore saved theme (or respect OS preference as default)
+const savedTheme = localStorage.getItem('go3d-theme') ||
+  (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+applyTheme(savedTheme);
 
 // ─── Start — restore saved game or fresh board ────────────────────────────────
 const hadSave = loadFromStorage();

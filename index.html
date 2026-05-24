@@ -5,8 +5,109 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>3D Go</title>
   <style>
+    /* ══════════════════════════════════════════════════════════════════════════
+       CSS CUSTOM PROPERTIES — dark theme (default)
+    ══════════════════════════════════════════════════════════════════════════ */
+    :root {
+      /* backgrounds */
+      --bg:           #1a1a2e;
+      --surface:      rgba(30,30,60,0.98);
+      --surface-chat: rgba(18,18,40,0.98);
+      --backdrop:     rgba(10,10,25,0.90);
+      /* controls */
+      --ctrl-bg:      rgba(255,255,255,0.10);
+      --ctrl-border:  rgba(255,255,255,0.22);
+      /* text */
+      --text:         #fff;
+      --text-muted:   rgba(255,255,255,0.75);
+      --text-faint:   rgba(255,255,255,0.45);
+      --sep:          rgba(255,255,255,0.14);
+      /* accent blue */
+      --accent-bg:         rgba(100,160,255,0.28);
+      --accent-bg-active:  rgba(100,160,255,0.45);
+      --accent-border:     rgba(100,160,255,0.60);
+      --accent-text:       rgba(100,160,255,0.90);
+      /* green */
+      --green-bg:     rgba(80,200,120,0.18);
+      --green-border: rgba(80,200,120,0.48);
+      --green-text:   #aef5c0;
+      --green-dot:    #4ade80;
+      /* amber */
+      --amber-bg:        rgba(250,180,50,0.15);
+      --amber-bg-active: rgba(250,180,50,0.28);
+      --amber-border:    rgba(250,180,50,0.45);
+      --amber-text:      #fbbf24;
+      /* inputs */
+      --input-bg:      rgba(255,255,255,0.07);
+      --input-border:  rgba(255,255,255,0.22);
+      --placeholder:   rgba(255,255,255,0.30);
+      /* chat messages */
+      --msg-mine-bg:      rgba(100,160,255,0.28);
+      --msg-mine-border:  rgba(100,160,255,0.40);
+      --msg-theirs-bg:    rgba(255,255,255,0.10);
+      --msg-theirs-border:rgba(255,255,255,0.14);
+      --sender:           rgba(255,255,255,0.40);
+      /* misc */
+      --code-color:      #7ab4ff;
+      --code-box-bg:     rgba(100,160,255,0.12);
+      --code-box-border: rgba(100,160,255,0.40);
+      --error:           #f87171;
+      --close-btn:       rgba(255,255,255,0.48);
+      --surface-border:  rgba(255,255,255,0.18);
+    }
+
+    /* ── Light theme overrides ─────────────────────────────────────────────── */
+    :root[data-theme="light"] {
+      --bg:           #e8ecf5;
+      --surface:      rgba(255,255,255,0.97);
+      --surface-chat: rgba(242,244,252,0.98);
+      --backdrop:     rgba(175,185,215,0.88);
+      --ctrl-bg:      rgba(0,0,0,0.07);
+      --ctrl-border:  rgba(0,0,0,0.16);
+      --text:         #1a1a2e;
+      --text-muted:   rgba(0,0,0,0.65);
+      --text-faint:   rgba(0,0,0,0.40);
+      --sep:          rgba(0,0,0,0.11);
+      --accent-bg:         rgba(60,120,220,0.18);
+      --accent-bg-active:  rgba(60,120,220,0.32);
+      --accent-border:     rgba(60,120,220,0.55);
+      --accent-text:       rgba(35,95,205,0.90);
+      --green-bg:     rgba(30,140,70,0.14);
+      --green-border: rgba(30,140,70,0.42);
+      --green-text:   #14532d;
+      --green-dot:    #16a34a;
+      --amber-bg:        rgba(160,90,0,0.12);
+      --amber-bg-active: rgba(160,90,0,0.22);
+      --amber-border:    rgba(160,90,0,0.38);
+      --amber-text:      #92400e;
+      --input-bg:      rgba(0,0,0,0.05);
+      --input-border:  rgba(0,0,0,0.18);
+      --placeholder:   rgba(0,0,0,0.30);
+      --msg-mine-bg:       rgba(60,120,220,0.18);
+      --msg-mine-border:   rgba(60,120,220,0.32);
+      --msg-theirs-bg:     rgba(0,0,0,0.06);
+      --msg-theirs-border: rgba(0,0,0,0.11);
+      --sender:            rgba(0,0,0,0.35);
+      --code-color:      #2563eb;
+      --code-box-bg:     rgba(60,120,220,0.10);
+      --code-box-border: rgba(60,120,220,0.35);
+      --error:           #dc2626;
+      --close-btn:       rgba(0,0,0,0.38);
+      --surface-border:  rgba(0,0,0,0.12);
+    }
+
+    /* ── Smooth theme transitions ──────────────────────────────────────────── */
+    body, .pill, .ctrl-btn, .action-btn, #helpBtn, #chatBtn, #themeBtn,
+    #chat-panel, #chat-header, .chat-msg, #chatInput,
+    #help-overlay, #help-box, #overlay, #overlay-box,
+    #online-modal, #waiting-overlay, .online-box, .online-action-btn,
+    .online-size-btn, #joinCodeInput, .code-display, #scoringBtn,
+    .panel-label, #opponent-banner, #chatSendBtn {
+      transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+    }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #1a1a2e; font-family: sans-serif; overflow: hidden; }
+    body { background: var(--bg); font-family: sans-serif; overflow: hidden; }
     #app { width: 100vw; height: 100vh; height: 100dvh; position: relative; }
     canvas { width: 100%; height: 100%; display: block; cursor: grab; }
     canvas:active { cursor: grabbing; }
@@ -17,28 +118,28 @@
       display: flex; justify-content: center; gap: 7px; flex-wrap: wrap; padding: 0 8px;
     }
     .pill {
-      background: rgba(255,255,255,0.12);
-      border: 0.5px solid rgba(255,255,255,0.2);
+      background: var(--ctrl-bg);
+      border: 0.5px solid var(--ctrl-border);
       border-radius: 20px; padding: 5px 14px;
-      font-size: 13px; color: #fff;
+      font-size: 13px; color: var(--text);
     }
     #turn { font-weight: 500; }
-    #score { color: rgba(255,255,255,0.8); }
+    #score { color: var(--text-muted); }
 
     /* ── Opponent banner (online mode) ───────────────────────────────────── */
     #opponent-banner {
       display: none; position: absolute;
       top: 44px; left: 50%; transform: translateX(-50%);
-      background: rgba(80,200,120,0.15);
-      border: 0.5px solid rgba(80,200,120,0.4);
+      background: var(--green-bg);
+      border: 0.5px solid var(--green-border);
       border-radius: 20px; padding: 4px 12px;
-      font-size: 11px; color: #aef5c0;
+      font-size: 11px; color: var(--green-text);
       white-space: nowrap; z-index: 10;
       align-items: center; gap: 5px;
     }
     #opponent-banner .green-dot {
       width: 6px; height: 6px; border-radius: 50%;
-      background: #4ade80; flex-shrink: 0;
+      background: var(--green-dot); flex-shrink: 0;
     }
 
     /* ── Left panel ──────────────────────────────────────────────────────── */
@@ -47,7 +148,7 @@
       display: flex; flex-direction: column; gap: 4px;
     }
     .panel-label {
-      font-size: 10px; color: rgba(255,255,255,0.45);
+      font-size: 10px; color: var(--text-faint);
       letter-spacing: .5px; margin-bottom: 2px;
     }
     #layers { display: flex; flex-direction: column; gap: 3px; }
@@ -59,30 +160,30 @@
     }
     .btn-group { display: flex; gap: 4px; }
     .ctrl-btn {
-      background: rgba(255,255,255,0.1);
-      border: 0.5px solid rgba(255,255,255,0.25);
+      background: var(--ctrl-bg);
+      border: 0.5px solid var(--ctrl-border);
       border-radius: 10px; padding: 4px 10px;
-      font-size: 11px; cursor: pointer; color: #fff;
+      font-size: 11px; cursor: pointer; color: var(--text);
     }
     .ctrl-btn.active {
-      background: rgba(100,160,255,0.3);
-      border-color: rgba(100,160,255,0.6);
+      background: var(--accent-bg);
+      border-color: var(--accent-border);
     }
     /* Online globe button */
     #onlineBtn {
-      background: rgba(250,180,50,0.15);
-      border-color: rgba(250,180,50,0.45);
-      color: #fbbf24;
+      background: var(--amber-bg);
+      border-color: var(--amber-border);
+      color: var(--amber-text);
     }
     #onlineBtn.active {
-      background: rgba(250,180,50,0.3);
-      border-color: rgba(250,180,50,0.7);
+      background: var(--amber-bg-active);
+      border-color: var(--amber-border);
     }
     #scoringBtn {
-      background: rgba(255,255,255,0.1);
-      border: 0.5px solid rgba(255,255,255,0.25);
+      background: var(--ctrl-bg);
+      border: 0.5px solid var(--ctrl-border);
       border-radius: 12px; padding: 4px 12px;
-      font-size: 11px; cursor: pointer; color: #fff;
+      font-size: 11px; cursor: pointer; color: var(--text);
     }
 
     /* Online mode — lock board size, hide mode/scoring rows */
@@ -103,7 +204,7 @@
     #roomCodeDisplay { display: none; }
     .room-code-pill {
       font-size: 13px; font-weight: 700;
-      letter-spacing: 5px; color: #7ab4ff; padding: 2px 4px;
+      letter-spacing: 5px; color: var(--code-color); padding: 2px 4px;
     }
 
     /* ── Bottom bar ──────────────────────────────────────────────────────── */
@@ -115,45 +216,38 @@
       #bottom-ui { bottom: calc(env(safe-area-inset-bottom) + 16px); }
     }
     .action-btn {
-      background: rgba(255,255,255,0.1);
-      border: 0.5px solid rgba(255,255,255,0.25);
+      background: var(--ctrl-bg);
+      border: 0.5px solid var(--ctrl-border);
       border-radius: 20px; padding: 6px 16px;
-      font-size: 13px; cursor: pointer; color: #fff;
+      font-size: 13px; cursor: pointer; color: var(--text);
     }
     #aiBtn {
-      background: rgba(80,200,120,0.2);
-      border: 0.5px solid rgba(80,200,120,0.5);
-      color: #aef5c0; font-weight: 500;
+      background: var(--green-bg);
+      border: 0.5px solid var(--green-border);
+      color: var(--green-text); font-weight: 500;
       display: none;
     }
 
-    /* ── Help button ─────────────────────────────────────────────────────── */
-    #helpBtn {
-      position: absolute; bottom: 70px; right: 14px;
+    /* ── Icon buttons (help / theme / chat) ──────────────────────────────── */
+    #helpBtn, #themeBtn, #chatBtn {
+      position: absolute; bottom: 70px;
       width: 30px; height: 30px; border-radius: 50%;
-      background: rgba(255,255,255,0.1);
-      border: 0.5px solid rgba(255,255,255,0.25);
-      color: #fff; font-size: 15px; cursor: pointer;
+      background: var(--ctrl-bg);
+      border: 0.5px solid var(--ctrl-border);
+      color: var(--text); font-size: 15px; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       z-index: 10;
     }
     @supports (bottom: env(safe-area-inset-bottom)) {
-      #helpBtn { bottom: calc(env(safe-area-inset-bottom) + 16px); }
+      #helpBtn, #themeBtn, #chatBtn {
+        bottom: calc(env(safe-area-inset-bottom) + 16px);
+      }
     }
+    #helpBtn  { right: 14px; }
+    #themeBtn { right: 52px; font-size: 14px; }
+    /* chat is right:90px and only shown online — see online-mode rules above */
+    #chatBtn  { right: 90px; }
 
-    /* ── Chat button (online mode only) ──────────────────────────────────── */
-    #chatBtn {
-      display: none; position: absolute; bottom: 70px; right: 52px;
-      width: 30px; height: 30px; border-radius: 50%;
-      background: rgba(255,255,255,0.1);
-      border: 0.5px solid rgba(255,255,255,0.25);
-      color: #fff; font-size: 16px; cursor: pointer;
-      align-items: center; justify-content: center;
-      z-index: 10;
-    }
-    @supports (bottom: env(safe-area-inset-bottom)) {
-      #chatBtn { bottom: calc(env(safe-area-inset-bottom) + 16px); }
-    }
     #chatBadge {
       position: absolute; top: -4px; right: -4px;
       width: 16px; height: 16px; border-radius: 50%;
@@ -165,20 +259,20 @@
     #chat-panel {
       display: none; position: absolute;
       bottom: 0; left: 0; right: 0; height: 320px;
-      background: rgba(18,18,40,0.98);
-      border-top: 0.5px solid rgba(255,255,255,0.15);
+      background: var(--surface-chat);
+      border-top: 0.5px solid var(--sep);
       border-radius: 20px 20px 0 0;
       z-index: 22; flex-direction: column;
     }
     #chat-header {
       padding: 14px 16px 10px;
       display: flex; justify-content: space-between; align-items: center;
-      border-bottom: 0.5px solid rgba(255,255,255,0.1);
-      font-size: 14px; font-weight: 600; color: #fff;
+      border-bottom: 0.5px solid var(--sep);
+      font-size: 14px; font-weight: 600; color: var(--text);
     }
     #closeChatBtn {
       background: none; border: none;
-      color: rgba(255,255,255,0.5); font-size: 20px; cursor: pointer;
+      color: var(--close-btn); font-size: 20px; cursor: pointer;
     }
     #chat-messages {
       flex: 1; overflow-y: auto;
@@ -191,33 +285,35 @@
     }
     .chat-msg.mine {
       align-self: flex-end;
-      background: rgba(100,160,255,0.3);
-      border: 0.5px solid rgba(100,160,255,0.4); color: #fff;
+      background: var(--msg-mine-bg);
+      border: 0.5px solid var(--msg-mine-border);
+      color: var(--text);
     }
     .chat-msg.theirs {
       align-self: flex-start;
-      background: rgba(255,255,255,0.1);
-      border: 0.5px solid rgba(255,255,255,0.15); color: #fff;
+      background: var(--msg-theirs-bg);
+      border: 0.5px solid var(--msg-theirs-border);
+      color: var(--text);
     }
     .chat-msg .sender {
-      font-size: 10px; color: rgba(255,255,255,0.4); margin-bottom: 3px;
+      font-size: 10px; color: var(--sender); margin-bottom: 3px;
     }
     #chat-input-row {
       padding: 10px 12px 24px;
       display: flex; gap: 8px; align-items: center;
-      border-top: 0.5px solid rgba(255,255,255,0.1);
+      border-top: 0.5px solid var(--sep);
     }
     #chatInput {
       flex: 1;
-      background: rgba(255,255,255,0.08);
-      border: 0.5px solid rgba(255,255,255,0.2);
+      background: var(--input-bg);
+      border: 0.5px solid var(--input-border);
       border-radius: 20px; padding: 8px 14px;
-      color: #fff; font-size: 13px; outline: none;
+      color: var(--text); font-size: 13px; outline: none;
     }
-    #chatInput::placeholder { color: rgba(255,255,255,0.3); }
+    #chatInput::placeholder { color: var(--placeholder); }
     #chatSendBtn {
       width: 34px; height: 34px; border-radius: 50%;
-      background: rgba(100,160,255,0.4);
+      background: var(--accent-bg-active);
       border: none; color: #fff; font-size: 16px; cursor: pointer;
       flex-shrink: 0; display: flex; align-items: center; justify-content: center;
     }
@@ -225,142 +321,142 @@
     /* ── Help overlay ────────────────────────────────────────────────────── */
     #help-overlay {
       display: none; position: absolute; inset: 0;
-      background: rgba(10,10,25,0.92);
+      background: var(--backdrop);
       align-items: center; justify-content: center;
       z-index: 25; overflow-y: auto;
     }
     #help-box {
-      background: rgba(30,30,60,0.98);
-      border: 0.5px solid rgba(255,255,255,0.2);
+      background: var(--surface);
+      border: 0.5px solid var(--surface-border);
       border-radius: 16px; padding: 26px 30px;
-      color: #fff; max-width: 380px; width: 90%;
+      color: var(--text); max-width: 380px; width: 90%;
       margin: 20px auto;
     }
     #help-box h2 { font-size: 17px; font-weight: 600; margin-bottom: 14px; text-align: center; }
-    #help-box h3 { font-size: 12px; font-weight: 600; color: rgba(100,160,255,0.9);
+    #help-box h3 { font-size: 12px; font-weight: 600; color: var(--accent-text);
                    letter-spacing: .5px; margin: 14px 0 5px; text-transform: uppercase; }
-    #help-box p  { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.75; }
+    #help-box p  { font-size: 13px; color: var(--text-muted); line-height: 1.75; }
     #helpClose {
       display: block; margin: 20px auto 0;
-      background: rgba(255,255,255,0.12);
-      border: 0.5px solid rgba(255,255,255,0.25);
+      background: var(--ctrl-bg);
+      border: 0.5px solid var(--ctrl-border);
       border-radius: 20px; padding: 7px 28px;
-      font-size: 13px; cursor: pointer; color: #fff;
+      font-size: 13px; cursor: pointer; color: var(--text);
     }
 
     /* ── Game-over overlay ───────────────────────────────────────────────── */
     #overlay {
       display: none; position: absolute; inset: 0;
-      background: rgba(10,10,25,0.88);
+      background: var(--backdrop);
       align-items: center; justify-content: center;
       z-index: 20; flex-direction: column;
     }
     #overlay-box {
-      background: rgba(30,30,60,0.98);
-      border: 0.5px solid rgba(255,255,255,0.2);
+      background: var(--surface);
+      border: 0.5px solid var(--surface-border);
       border-radius: 16px; padding: 28px 36px;
-      text-align: center; color: #fff; min-width: 260px;
+      text-align: center; color: var(--text); min-width: 260px;
     }
     #overlayTitle { font-size: 18px; font-weight: 500; margin-bottom: 16px; }
-    #overlayBody  { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.9; }
+    #overlayBody  { font-size: 13px; color: var(--text-muted); line-height: 1.9; }
     #overlayClose {
       margin-top: 18px;
-      background: rgba(255,255,255,0.12);
-      border: 0.5px solid rgba(255,255,255,0.25);
+      background: var(--ctrl-bg);
+      border: 0.5px solid var(--ctrl-border);
       border-radius: 20px; padding: 7px 22px;
-      font-size: 13px; cursor: pointer; color: #fff;
+      font-size: 13px; cursor: pointer; color: var(--text);
     }
 
     /* ── Online modal (create / join) ────────────────────────────────────── */
     #online-modal, #waiting-overlay {
       display: none; position: absolute; inset: 0;
-      background: rgba(10,10,25,0.9);
+      background: var(--backdrop);
       align-items: center; justify-content: center;
       z-index: 30;
     }
     .online-box {
-      background: rgba(30,30,60,0.98);
-      border: 0.5px solid rgba(255,255,255,0.2);
+      background: var(--surface);
+      border: 0.5px solid var(--surface-border);
       border-radius: 16px; padding: 28px 26px;
-      width: min(310px, 90vw); text-align: center; color: #fff;
+      width: min(310px, 90vw); text-align: center; color: var(--text);
     }
     .online-box h2 { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
-    .online-box > p { font-size: 12px; color: rgba(255,255,255,0.55); margin-bottom: 18px; }
+    .online-box > p { font-size: 12px; color: var(--text-faint); margin-bottom: 18px; }
 
     /* Size picker in modal */
     #onlineSizeRow { display: flex; gap: 6px; justify-content: center; margin-bottom: 18px; }
     .online-size-btn {
-      background: rgba(255,255,255,0.08);
-      border: 0.5px solid rgba(255,255,255,0.2);
+      background: var(--ctrl-bg);
+      border: 0.5px solid var(--ctrl-border);
       border-radius: 10px; padding: 6px 12px;
-      font-size: 12px; color: #fff; cursor: pointer;
+      font-size: 12px; color: var(--text); cursor: pointer;
     }
     .online-size-btn.active {
-      background: rgba(100,160,255,0.3);
-      border-color: rgba(100,160,255,0.6);
+      background: var(--accent-bg);
+      border-color: var(--accent-border);
     }
 
     .online-action-btn {
       display: block; width: 100%; padding: 11px;
       border-radius: 12px; border: none;
       font-size: 14px; cursor: pointer; margin-bottom: 10px;
-      font-weight: 500; color: #fff;
+      font-weight: 500; color: var(--text);
     }
     .online-action-btn.primary {
-      background: rgba(100,160,255,0.35);
-      border: 0.5px solid rgba(100,160,255,0.6);
+      background: var(--accent-bg);
+      border: 0.5px solid var(--accent-border);
     }
     .online-action-btn.secondary {
-      background: rgba(255,255,255,0.08);
-      border: 0.5px solid rgba(255,255,255,0.2);
+      background: var(--ctrl-bg);
+      border: 0.5px solid var(--ctrl-border);
     }
     .online-action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
     .online-divider {
       display: flex; align-items: center; gap: 10px;
       margin: 6px 0 14px;
-      font-size: 11px; color: rgba(255,255,255,0.3);
+      font-size: 11px; color: var(--placeholder);
     }
     .online-divider::before, .online-divider::after {
       content: ''; flex: 1; height: 0.5px;
-      background: rgba(255,255,255,0.15);
+      background: var(--sep);
     }
 
     #joinCodeInput {
       width: 100%;
-      background: rgba(255,255,255,0.07);
-      border: 0.5px solid rgba(255,255,255,0.25);
+      background: var(--input-bg);
+      border: 0.5px solid var(--input-border);
       border-radius: 10px; padding: 11px 14px;
-      color: #fff; font-size: 22px;
+      color: var(--text); font-size: 22px;
       letter-spacing: 6px; text-align: center;
       margin-bottom: 8px; outline: none;
       text-transform: uppercase;
     }
     #joinCodeInput::placeholder {
       letter-spacing: 2px; font-size: 13px;
-      color: rgba(255,255,255,0.3);
+      color: var(--placeholder);
     }
-    #joinError { font-size: 12px; color: #f87171; min-height: 18px; margin-bottom: 6px; }
+    #joinError { font-size: 12px; color: var(--error); min-height: 18px; margin-bottom: 6px; }
 
     /* Waiting screen */
     .code-display {
-      background: rgba(100,160,255,0.12);
-      border: 0.5px solid rgba(100,160,255,0.4);
+      background: var(--code-box-bg);
+      border: 0.5px solid var(--code-box-border);
       border-radius: 12px; padding: 16px; margin-bottom: 16px;
     }
     .code-display .code-label {
-      font-size: 11px; color: rgba(255,255,255,0.45); margin-bottom: 6px;
+      font-size: 11px; color: var(--text-faint); margin-bottom: 6px;
     }
     .code-display .code-text {
       font-size: 30px; font-weight: 700;
-      letter-spacing: 10px; color: #7ab4ff;
+      letter-spacing: 10px; color: var(--code-color);
     }
     .waiting-dots {
       display: flex; gap: 6px; justify-content: center; margin: 12px 0;
     }
     .waiting-dots span {
       width: 8px; height: 8px; border-radius: 50%;
-      background: rgba(255,255,255,0.3);
+      background: var(--placeholder);
       animation: wdot 1.2s infinite;
     }
     .waiting-dots span:nth-child(2) { animation-delay: .2s; }
@@ -426,10 +522,13 @@
     </div>
 
     <!-- ── Chat button (online only) ────────────────────────────────────── -->
-    <button id="chatBtn">
+    <button id="chatBtn" style="display:none">
       💬
       <span id="chatBadge"></span>
     </button>
+
+    <!-- ── Theme toggle ──────────────────────────────────────────────────── -->
+    <button id="themeBtn" title="Toggle dark / light mode">☀️</button>
 
     <!-- ── Help button ───────────────────────────────────────────────────── -->
     <button id="helpBtn">?</button>
@@ -490,6 +589,9 @@
            <b>To join:</b> enter the code your friend shared and tap <b>Join game →</b>.<br><br>
            You play <b>Black</b> as host, <b>White</b> as guest. Moves sync instantly. Use <b>💬</b> to open the chat panel during the game. Tap <b>Leave</b> to exit the room.</p>
 
+        <h3>Dark / light mode</h3>
+        <p>Tap the <b>☀️ / 🌙</b> button (bottom-right, next to <b>?</b>) to switch between dark and light themes. Your preference is saved automatically.</p>
+
         <button id="helpClose">Got it</button>
       </div>
     </div>
@@ -526,7 +628,7 @@
         <button class="online-action-btn secondary" id="joinGameBtn">Join game →</button>
 
         <button class="online-action-btn secondary" id="onlineBackBtn"
-                style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:2px">← Back</button>
+                style="font-size:12px;margin-top:2px">← Back</button>
       </div>
     </div>
 
@@ -539,7 +641,7 @@
           <div class="code-label">ROOM CODE</div>
           <div class="code-text" id="displayCode"></div>
         </div>
-        <p style="font-size:12px;color:rgba(255,255,255,0.4)">Waiting for opponent to join…</p>
+        <p style="font-size:12px;color:var(--text-faint)">Waiting for opponent to join…</p>
         <div class="waiting-dots">
           <span></span><span></span><span></span>
         </div>
