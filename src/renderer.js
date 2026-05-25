@@ -27,7 +27,10 @@ const hintMats = [
   new THREE.MeshPhongMaterial({ color: 0x22ddff, opacity: 0.16, transparent: true, depthWrite: false }),
 ];
 
-const markerGeo = new THREE.RingGeometry(0.22, 0.32, 20);
+// Ring scales with stone size so it's always visible outside the stone
+function makeMarkerGeo() {
+  return new THREE.RingGeometry(C.stoneR * 1.08, C.stoneR * 1.5, 24);
+}
 
 // ─── Init ────────────────────────────────────────────────────────────────────
 export function initRenderer(canvas) {
@@ -158,7 +161,7 @@ export function addStoneMesh(x, y, z, color) {
     color: color === 1 ? 0x44aaff : 0xff7744,
     side: THREE.DoubleSide, opacity: 0.9, transparent: true,
   });
-  const ring = new THREE.Mesh(markerGeo, ringMat);
+  const ring = new THREE.Mesh(makeMarkerGeo(), ringMat);
   ring.position.set(OFF + x*SP, targetY + 0.01, OFF + z*SP);
   ring.rotation.x = -Math.PI / 2;
   markerGroup.add(ring); lastMarker = ring;
@@ -194,7 +197,7 @@ export function rebuildStoneMeshes(lastPlacedPos) {
         color: color === 1 ? 0x44aaff : 0xff7744,
         side: THREE.DoubleSide, opacity: 0.9, transparent: true,
       });
-      const ring = new THREE.Mesh(markerGeo, ringMat);
+      const ring = new THREE.Mesh(makeMarkerGeo(), ringMat);
       ring.position.set(OFF + x*SP, OFF + y*SP + 0.01, OFF + z*SP);
       ring.rotation.x = -Math.PI / 2;
       markerGroup.add(ring); lastMarker = ring;
