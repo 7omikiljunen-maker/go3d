@@ -708,12 +708,18 @@ const installBanner = document.getElementById('install-banner');
 
 function hideInstallUI() {
   installPrompt = null;
-  installRow.style.display    = 'none';
   installBanner.classList.remove('show');
+  installBtn.textContent  = '✓ Installed';
+  installBtn.disabled     = true;
+  installBtn.style.opacity = '0.5';
 }
 
 async function triggerInstall() {
-  if (!installPrompt) return;
+  if (!installPrompt) {
+    // already installed or browser doesn't support — guide user
+    alert('To install: click the install icon (⊕) in your browser address bar, or use browser menu → "Install 3D Go".');
+    return;
+  }
   installPrompt.prompt();
   const { outcome } = await installPrompt.userChoice;
   if (outcome === 'accepted') hideInstallUI();
@@ -722,19 +728,21 @@ async function triggerInstall() {
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   installPrompt = e;
-  installRow.style.display = '';                    // settings button
+  installBtn.textContent   = '⬇ Install';
+  installBtn.disabled      = false;
+  installBtn.style.opacity = '1';
   if (!localStorage.getItem('installDismissed')) {
-    installBanner.classList.add('show');             // bottom banner
+    installBanner.classList.add('show');
   }
 });
 
 window.addEventListener('appinstalled', hideInstallUI);
 
-installBtn.onclick          = triggerInstall;
+installBtn.onclick = triggerInstall;
 installBanner.querySelector('#installBannerBtn').onclick     = triggerInstall;
 installBanner.querySelector('#installBannerDismiss').onclick = () => {
   installBanner.classList.remove('show');
-  localStorage.setItem('installDismissed', '1');    // never show banner again
+  localStorage.setItem('installDismissed', '1');
 };
 
 // Restore saved theme (or respect OS preference as default)
