@@ -185,23 +185,64 @@ function staticEval(brd, aiPlayer) {
     score += sign * size * 5;
   }
 
-  // ── Influence: reward controlling empty space ────────────────────────────────
-  // For each empty cell, if only AI stones are adjacent → AI territory.
-  // If only opponent stones are adjacent → opponent territory.
-  // This pushes the AI to expand and "capture areas" rather than just hug its stones.
-  for (let x = 0; x < N; x++) for (let y = 0; y < N; y++) for (let z = 0; z < N; z++) {
-    if (brd[x][y][z] !== 0) continue;
-    let nearAI = false, nearOpp = false;
-    for (const [dx, dy, dz] of [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]) {
-      const nx = x+dx, ny = y+dy, nz = z+dz;
-      if (nx<0||nx>=N||ny<0||ny>=N||nz<0||nz>=N) continue;
-      if (brd[nx][ny][nz] === aiPlayer)     nearAI  = true;
-      if (brd[nx][ny][nz] === 3 - aiPlayer) nearOpp = true;
-    }
-    if (nearAI  && !nearOpp) score += 18;  // AI controls this empty cell
-    if (nearOpp && !nearAI)  score -= 18;  // opponent controls this empty cell
+  // ── Territory: BFS flood-fill from each player's stones ─────────────────────
+  // AI stones block the opponent's flood, and vice versa.
+  // Empty cells the opponent can't reach at all = securely enclosed AI territory.
+  // This directly rewards building surrounding walls around empty space.
+  score += territoryScore(brd, aiPlayer);
+
+  return score;
+}
+
+// ─── BFS territory scoring ────────────────────────────────────────────────────
+// Floods outward from each player's stones. Enemy stones act as walls.
+// An empty cell closer to AI than opponent = AI influence (and vice versa).
+// A cell the opponent simply can't reach = fully enclosed AI territory.
+function territoryScore(brd, aiPlayer) {
+  const opp = 3 - aiPlayer;
+  const INF = N * N * N + 1;
+  const size = N * N * N;
+  const aiDist  = new Int32Array(size).fill(INF);
+  const oppDist = new Int32Array(size).fill(INF);
+  const idx = (x, y, z) => x*N*N + y*N + z;
+  const dirs = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+
+  // Seed BFS queues from each player's stones
+  const aiQ = [], oppQ = [];
+  for (let x=0; x<N; x++) for (let y=0; y<N; y++) for (let z=0; z<N; z++) {
+    if (brd[x][y][z] === aiPlayer) { aiDist[idx(x,y,z)]  = 0; aiQ.push(x, y, z); }
+    if (brd[x][y][z] === opp)      { oppDist[idx(x,y,z)] = 0; oppQ.push(x, y, z); }
   }
 
+  // BFS: spread through empty cells only, blocked by enemy stones (the walls)
+  function bfs(q, dist, blocker) {
+    for (let i = 0; i < q.length; i += 3) {
+      const x=q[i], y=q[i+1], z=q[i+2], d=dist[idx(x,y,z)];
+      for (const [dx,dy,dz] of dirs) {
+        const nx=x+dx, ny=y+dy, nz=z+dz;
+        if (nx<0||nx>=N||ny<0||ny>=N||nz<0||nz>=N) continue;
+        if (brd[nx][ny][nz] === blocker) continue; // wall — can't pass
+        const ni = idx(nx,ny,nz);
+        if (dist[ni] === INF) { dist[ni] = d+1; q.push(nx, ny, nz); }
+      }
+    }
+  }
+
+  bfs(aiQ,  aiDist,  opp);      // AI flood blocked by opponent stones
+  bfs(oppQ, oppDist, aiPlayer); // opponent flood blocked by AI stones
+
+  // Score each empty cell
+  let score = 0;
+  for (let x=0; x<N; x++) for (let y=0; y<N; y++) for (let z=0; z<N; z++) {
+    if (brd[x][y][z] !== 0) continue;
+    const da = aiDist[idx(x,y,z)];
+    const do_ = oppDist[idx(x,y,z)];
+    if (da === INF && do_ === INF) continue; // unreachable by both — ignore
+    if (da  < do_)  score += 22;             // AI closer — AI influence
+    if (do_ < da)   score -= 22;             // opponent closer
+    if (da  < INF && do_ === INF) score += 20; // fully enclosed by AI walls
+    if (do_ < INF && da  === INF) score -= 20; // fully enclosed by opponent
+  }
   return score;
 }
 
