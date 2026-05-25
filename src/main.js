@@ -34,6 +34,8 @@ import {
   showOverlay, hideOverlay, initScoringBtn, syncScoringBtn,
 } from './ui.js';
 
+import { signInWithGoogle, signOut, onAuthChange } from './auth.js';
+
 import {
   createRoom, joinRoom, subscribeRoom, pushGameState,
   sendChat, subscribeChat, signalLeave, leaveRoom,
@@ -59,6 +61,26 @@ function showConfirm(msg) {
     document.getElementById('confirmCancel').addEventListener('click', onCancel);
   });
 }
+
+// ─── Auth state ───────────────────────────────────────────────────────────────
+let currentUser = null;
+
+function updateAuthUI() {
+  const el = document.getElementById('authStatus');
+  if (!el) return;
+  if (currentUser) {
+    el.innerHTML =
+      `Signed in as <b>${currentUser.displayName ?? currentUser.email}</b> &nbsp;·&nbsp; <a id="signOutLink">Sign out</a>`;
+    document.getElementById('signOutLink').onclick = () => signOut();
+  } else {
+    el.textContent = 'Sign in required to create a game';
+  }
+}
+
+onAuthChange(user => {
+  currentUser = user;
+  updateAuthUI();
+});
 
 // ─── Canvas & renderer init ───────────────────────────────────────────────────
 const canvas = document.getElementById('c');
@@ -411,6 +433,7 @@ let onlineN = 5; // board size chosen in the online modal
 
 document.getElementById('onlineBtn').onclick = () => {
   closeSettings(); // close settings before opening online modal
+  updateAuthUI();  // refresh sign-in status every time modal opens
   // Sync the modal size selector to current N
   onlineN = N;
   document.querySelectorAll('.online-size-btn').forEach(b => {
@@ -437,6 +460,19 @@ document.querySelectorAll('.online-size-btn').forEach(btn => {
 
 // ─── Create game ──────────────────────────────────────────────────────────────
 document.getElementById('createGameBtn').onclick = async () => {
+  // ── Step 1: must be signed in ───────────────────────────────────────────
+  if (!currentUser) {
+    try {
+      const result = await signInWithGoogle();
+      currentUser = result.user;
+      updateAuthUI();
+    } catch (_) {
+      return; // user closed the popup — do nothing
+    }
+  }
+
+  // ── Step 2: payment check will go here (Step 6) ─────────────────────────
+
   const btn = document.getElementById('createGameBtn');
   btn.disabled = true;
   btn.textContent = 'Creating…';
