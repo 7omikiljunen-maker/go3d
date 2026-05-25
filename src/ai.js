@@ -149,6 +149,17 @@ function score1ply(x, y, z, player, brd, phase) {
 
   if (phase === 'opening') s += openingBonus(x, y, z, player, brd);
 
+  // Eye-building bonus: if placing here causes any adjacent empty cell to
+  // become a true eye (all its in-bounds neighbours are now own stones),
+  // reward the move.  This makes the move-ordering favour eye-formation
+  // before the deeper search even runs.
+  for (const [nx, ny, nz] of simNeighbors(x, y, z)) {
+    if (b[nx][ny][nz] !== 0) continue; // must be an empty neighbour
+    if (simNeighbors(nx, ny, nz).every(([nnx, nny, nnz]) => b[nnx][nny][nnz] === player)) {
+      s += 150; // completing a true eye is very valuable
+    }
+  }
+
   // Heavy penalty for filling completely enclosed own territory.
   // All 6 neighbours (within bounds) are own stones → this cell is an interior void;
   // placing here wastes a move and gains nothing strategically.
@@ -201,6 +212,20 @@ function staticEval(brd, aiPlayer) {
       const distNorm = Math.sqrt(dx*dx + dy*dy + dz*dz) / halfSide;
       score += sign * (25 - distNorm * 20);
     }
+
+    // Eye counting: a liberty is a "true eye" when every one of its (up to 6)
+    // in-bounds neighbours is a stone of this group's colour.  The opponent can
+    // never legally fill a true eye (doing so would be immediate suicide), so
+    // each eye is a permanent, uncapturable liberty.
+    // Two or more eyes → the group is immortal; add a large "alive" bonus.
+    let eyeCount = 0;
+    for (const libKey of liberties) {
+      const [lx, ly, lz] = libKey.split(',').map(Number);
+      const allOwn = simNeighbors(lx, ly, lz).every(([nx, ny, nz]) => brd[nx][ny][nz] === color);
+      if (allOwn) eyeCount++;
+    }
+    if (eyeCount > 0) score += sign * eyeCount * 80;
+    if (eyeCount >= 2) score += sign * 250; // alive group — cannot be captured
   }
 
   // ── Territory: BFS flood-fill from each player's stones ─────────────────────

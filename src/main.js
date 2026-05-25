@@ -96,7 +96,7 @@ function refreshUI() {
   updateUI(current, captures, isComputerTurn);
   updateAiBtn(gameOver, playMode, current);
   // Disable undo only in CvC (always AI) or online; PvC allows undo at any time
-  updateUndoBtn(history.length, gameOver, playMode === 'cvc' || isOnline);
+  updateUndoBtn(history.length, gameOver, isOnline);
 }
 
 // ─── Sync UI button active states ────────────────────────────────────────────
@@ -186,7 +186,6 @@ function applyOpponentState(remoteData) {
 // ─── Undo ─────────────────────────────────────────────────────────────────────
 function handleUndo() {
   if (isOnline || gameOver || history.length === 0) return;
-  if (playMode === 'cvc') return; // CvC: never allow undo
 
   if (!undoMove()) return; // always undo exactly one move
 
