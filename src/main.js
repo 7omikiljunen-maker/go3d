@@ -316,6 +316,7 @@ document.querySelectorAll('#sizeButtons button').forEach(btn => {
     if (isOnline) return; // locked in online mode
     const newN = parseInt(btn.dataset.size);
     if (newN === N) return;
+    if (history.length > 0 && !confirm('Start a new game with this board size?')) return;
     setN(newN);
     syncSizeButtons();
     setupBoard();
