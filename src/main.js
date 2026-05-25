@@ -128,7 +128,7 @@ function exitOnlineMode() {
   chatBadge.style.display = 'none';
   chatMessages.innerHTML = '';
   waitingForUndoResponse = false;
-  document.getElementById('undoBtn').textContent = 'Undo';
+  setUndoBtnText('Undo');
 }
 
 // ─── Place stone ─────────────────────────────────────────────────────────────
@@ -205,10 +205,16 @@ function handleUndo() {
 }
 
 // ─── Online undo — request/response ──────────────────────────────────────────
+/** Keep the main undo button and the overlay undo button in sync. */
+function setUndoBtnText(text) {
+  document.getElementById('undoBtn').textContent        = text;
+  document.getElementById('overlayUndoBtn').textContent = text;
+}
+
 function requestOnlineUndo() {
   if (waitingForUndoResponse || history.length === 0) return;
   waitingForUndoResponse = true;
-  document.getElementById('undoBtn').textContent = 'Waiting…';
+  setUndoBtnText('Waiting…');
   refreshUI(); // disables button via waitingForUndoResponse
   sendUndoRequest();
 }
@@ -223,8 +229,7 @@ function handleUndoRequest(reqSeq) {
 /** Called on the REQUESTER's side when opponent responds. */
 async function handleUndoResponse(accepted) {
   waitingForUndoResponse = false;
-  const undoBtn = document.getElementById('undoBtn');
-  undoBtn.textContent = 'Undo';
+  setUndoBtnText('Undo');
 
   if (accepted) {
     const wasOver = gameOver;
@@ -236,8 +241,8 @@ async function handleUndoResponse(accepted) {
     await pushGameState({ board, N, current, captures, consecutivePasses, gameOver, koState, lastPlaced });
   } else {
     refreshUI(); // re-enable button
-    undoBtn.textContent = 'Declined';
-    setTimeout(() => { undoBtn.textContent = 'Undo'; }, 2000);
+    setUndoBtnText('Declined');
+    setTimeout(() => setUndoBtnText('Undo'), 2000);
   }
 }
 
@@ -264,6 +269,8 @@ function endGame() {
     terrResult = showTerritory();
   }
   showOverlay(captures[0], captures[1], scoringMode, terrResult, komi);
+  // Show overlay undo button only when there is something to undo
+  document.getElementById('overlayUndoBtn').style.display = history.length > 0 ? '' : 'none';
   if (!isOnline) clearStorage();
 }
 
@@ -337,7 +344,8 @@ document.getElementById('passBtn').onclick = async () => {
   refreshUI(); refreshHints();
 };
 
-document.getElementById('undoBtn').onclick = handleUndo;
+document.getElementById('undoBtn').onclick        = handleUndo;
+document.getElementById('overlayUndoBtn').onclick = handleUndo;
 
 document.getElementById('aiBtn').onclick = () => {
   if (gameOver) return;
