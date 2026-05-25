@@ -741,45 +741,46 @@
         <h2>How to play 3D Go</h2>
 
         <h3>Goal</h3>
-        <p>Score more points than your opponent by capturing their stones and surrounding territory on a cubic grid.</p>
+        <p>Score more points than your opponent by capturing their stones and surrounding territory — on a <b>3D cubic grid</b> instead of a flat board.</p>
 
         <h3>Placing stones</h3>
-        <p>Black goes first. Players take turns tapping an empty intersection to place a stone. You cannot skip your turn except by pressing <b>Pass</b>.</p>
+        <p>Black goes first. Players take turns tapping an empty intersection to place a stone. Press <b>Pass</b> to skip your turn.</p>
 
         <h3>Liberties &amp; captures</h3>
-        <p>Each stone has up to <b>6 neighbours</b> (left, right, up, down, forward, back). A stone or connected group is captured and removed when all its neighbours are occupied by the opponent — it has no <em>liberties</em> left.</p>
+        <p>Each stone has up to <b>6 neighbours</b> (left, right, up, down, forward, back). A stone or connected group is captured when all its neighbours are occupied by the opponent — it has no <em>liberties</em> left.</p>
 
         <h3>Ko rule</h3>
-        <p>You cannot make a move that returns the board to exactly the state it was in one move ago. This prevents infinite loops.</p>
+        <p>You cannot place a stone that returns the board to exactly its previous state. This prevents infinite loops.</p>
 
         <h3>Ending the game</h3>
-        <p>The game ends when both players <b>Pass</b> in a row. The player with the higher score wins.</p>
+        <p>The game ends when both players <b>Pass</b> consecutively. The player with the higher score wins.</p>
 
         <h3>Scoring</h3>
         <p><b>Captures</b> — stones you have taken.<br>
            <b>Territory</b> — empty intersections completely surrounded by your colour.<br>
-           <b>Komi</b> — White receives +6.5 bonus points to compensate for Black moving first.</p>
+           <b>Komi</b> — White gets +6.5 bonus points to compensate for Black moving first.</p>
 
         <h3>Controls</h3>
         <p><b>Tap / click</b> — place a stone.<br>
            <b>Drag</b> — rotate the board.<br>
            <b>Scroll / pinch</b> — zoom in and out.<br>
-           <b>L1 – L9</b> — toggle layer visibility to see inside the cube.</p>
-
-        <h3>Settings ⚙️</h3>
-        <p>Tap <b>⚙️</b> (bottom-right) to open settings: board size, game mode, scoring, sound, and theme. Changes to board size or mode start a new game immediately.</p>
+           <b>Layer buttons (L1 – L9)</b> — show or hide individual layers to see inside the cube.<br>
+           <b>Undo</b> — take back the last move (both players must agree in online games).</p>
 
         <h3>Modes</h3>
-        <p><b>PvP</b> — two humans, same device.<br>
-           <b>PvC</b> — you play Black, computer plays White.<br>
+        <p><b>PvP</b> — two players on the same device.<br>
+           <b>PvC</b> — you play Black, the computer plays White.<br>
            <b>CvC</b> — watch the computer play itself.<br>
-           <b>🌐 Online</b> — play against a friend on another device (in settings).</p>
+           <b>🌐 Online</b> — play against a friend on another device.</p>
+
+        <h3>Settings ⚙️</h3>
+        <p>Tap <b>⚙️</b> to change board size (3×3×3 up to 9×9×9), game mode, scoring method, sound, and colour theme.</p>
 
         <h3>Playing online</h3>
         <p>Open <b>⚙️ Settings</b> and tap <b>🌐 Play Online →</b>.<br><br>
-           <b>To host:</b> choose a board size, tap <b>✦ Create game</b>, then share the 6-letter code with your friend.<br><br>
-           <b>To join:</b> enter the code your friend shared and tap <b>Join game →</b>.<br><br>
-           You play <b>Black</b> as host, <b>White</b> as guest. Moves sync instantly. Use <b>💬</b> to open the chat panel during the game. Tap <b>Leave</b> to exit the room.</p>
+           <b>To host a game:</b> sign in with Google, then tap <b>✦ Create game</b>. Creating a game requires a one-time <b>€1 payment</b> — paid once, valid forever. Share the 6-letter room code with your friend.<br><br>
+           <b>To join a game:</b> enter the 6-letter code and tap <b>Join game →</b>. Joining is always <b>free</b>.<br><br>
+           You play <b>Black</b> as host and <b>White</b> as guest. Moves sync instantly. Tap <b>💬</b> for in-game chat. Tap <b>Leave</b> to exit.</p>
 
         <button id="helpClose">Got it</button>
       </div>
