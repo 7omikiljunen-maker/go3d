@@ -413,7 +413,7 @@ document.getElementById('overlayClose').onclick = async () => {
 
 // ─── Help ────────────────────────────────────────────────────────────────────
 const helpOverlay = document.getElementById('help-overlay');
-document.getElementById('helpBtn').onclick   = () => { helpOverlay.style.display = 'flex'; };
+document.getElementById('helpBtn').onclick   = () => { helpOverlay.style.display = 'block'; setTimeout(() => { helpOverlay.scrollTop = 0; }, 0); };
 document.getElementById('helpClose').onclick = () => { helpOverlay.style.display = 'none'; };
 helpOverlay.addEventListener('click', e => { if (e.target === helpOverlay) helpOverlay.style.display = 'none'; });
 
