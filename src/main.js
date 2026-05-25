@@ -702,28 +702,39 @@ document.getElementById('themeBtn').onclick = () => {
 
 // ─── PWA install prompt ───────────────────────────────────────────────────────
 let installPrompt = null;
-const installRow = document.getElementById('installRow');
-const installBtn = document.getElementById('installBtn');
+const installRow    = document.getElementById('installRow');
+const installBtn    = document.getElementById('installBtn');
+const installBanner = document.getElementById('install-banner');
+
+function hideInstallUI() {
+  installPrompt = null;
+  installRow.style.display    = 'none';
+  installBanner.classList.remove('show');
+}
+
+async function triggerInstall() {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  const { outcome } = await installPrompt.userChoice;
+  if (outcome === 'accepted') hideInstallUI();
+}
 
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   installPrompt = e;
-  installRow.style.display = '';          // show the row in settings
-});
-
-window.addEventListener('appinstalled', () => {
-  installPrompt = null;
-  installRow.style.display = 'none';      // hide after install
-});
-
-installBtn.onclick = async () => {
-  if (!installPrompt) return;
-  installPrompt.prompt();
-  const { outcome } = await installPrompt.userChoice;
-  if (outcome === 'accepted') {
-    installPrompt = null;
-    installRow.style.display = 'none';
+  installRow.style.display = '';                    // settings button
+  if (!localStorage.getItem('installDismissed')) {
+    installBanner.classList.add('show');             // bottom banner
   }
+});
+
+window.addEventListener('appinstalled', hideInstallUI);
+
+installBtn.onclick          = triggerInstall;
+installBanner.querySelector('#installBannerBtn').onclick     = triggerInstall;
+installBanner.querySelector('#installBannerDismiss').onclick = () => {
+  installBanner.classList.remove('show');
+  localStorage.setItem('installDismissed', '1');    // never show banner again
 };
 
 // Restore saved theme (or respect OS preference as default)

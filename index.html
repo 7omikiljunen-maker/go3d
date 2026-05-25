@@ -491,6 +491,26 @@
     }
     #payStatus { font-size: 11px; color: var(--text-muted); min-height: 14px; }
 
+    /* ── Install banner ─────────────────────────────────────────────────── */
+    #install-banner {
+      display: none; position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%);
+      background: var(--surface); border: 0.5px solid var(--ctrl-border);
+      border-radius: 12px; padding: 10px 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+      align-items: center; gap: 10px; z-index: 30;
+      white-space: nowrap; font-size: 13px; color: var(--text);
+    }
+    #install-banner.show { display: flex; }
+    #installBannerBtn {
+      background: var(--accent); color: #fff; border: none;
+      border-radius: 8px; padding: 6px 14px; font-size: 13px;
+      cursor: pointer; font-weight: 600;
+    }
+    #installBannerDismiss {
+      background: none; border: none; color: var(--text-muted);
+      font-size: 16px; cursor: pointer; padding: 0 2px; line-height: 1;
+    }
+
     /* ── Online modal (create / join) ────────────────────────────────────── */
     #online-modal, #waiting-overlay {
       display: none; position: absolute; inset: 0;
@@ -669,6 +689,13 @@
         </div>
         <div id="payStatus"></div>
       </div>
+    </div>
+
+    <!-- ── Install banner ─────────────────────────────────────────────── -->
+    <div id="install-banner">
+      <span>📲 Install 3D Go as an app</span>
+      <button id="installBannerBtn">Install</button>
+      <button id="installBannerDismiss">✕</button>
     </div>
 
     <!-- ── Confirm dialog ──────────────────────────────────────────────── -->
