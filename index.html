@@ -101,6 +101,7 @@
     body, .pill, .ctrl-btn, .action-btn, #helpBtn, #chatBtn, #gearBtn,
     #chat-panel, #chat-header, .chat-msg, #chatInput,
     #help-overlay, #help-box, #overlay, #overlay-box,
+    #confirm-modal, #confirm-box,
     #settings-modal, #settings-box, .settings-toggle-btn,
     #online-modal, #waiting-overlay, .online-box, .online-action-btn,
     .online-size-btn, #joinCodeInput, .code-display, #scoringBtn,
@@ -429,6 +430,36 @@
       font-size: 13px; cursor: pointer; color: var(--text);
     }
 
+    /* ── Confirm dialog ─────────────────────────────────────────────────── */
+    #confirm-modal {
+      display: none; position: absolute; inset: 0;
+      background: var(--backdrop);
+      align-items: center; justify-content: center;
+      z-index: 50;
+    }
+    #confirm-modal.open { display: flex; }
+    #confirm-box {
+      background: var(--surface);
+      border: 0.5px solid var(--surface-border);
+      border-radius: 16px; padding: 24px 28px;
+      color: var(--text); max-width: 280px; width: 88%;
+      text-align: center;
+    }
+    #confirm-msg {
+      font-size: 15px; margin-bottom: 22px; line-height: 1.5;
+    }
+    #confirm-btns {
+      display: flex; gap: 10px; justify-content: center;
+    }
+    #confirm-btns .ctrl-btn {
+      flex: 1; padding: 8px 0; font-size: 14px;
+    }
+    .confirm-ok-btn {
+      background: var(--accent-bg) !important;
+      border-color: var(--accent-border) !important;
+      color: var(--accent-text) !important;
+    }
+
     /* ── Online modal (create / join) ────────────────────────────────────── */
     #online-modal, #waiting-overlay {
       display: none; position: absolute; inset: 0;
@@ -585,6 +616,17 @@
       <div id="chat-input-row">
         <input id="chatInput" placeholder="Message…" maxlength="200"/>
         <button id="chatSendBtn">↑</button>
+      </div>
+    </div>
+
+    <!-- ── Confirm dialog ──────────────────────────────────────────────── -->
+    <div id="confirm-modal">
+      <div id="confirm-box">
+        <div id="confirm-msg"></div>
+        <div id="confirm-btns">
+          <button id="confirmCancel" class="ctrl-btn">Cancel</button>
+          <button id="confirmOk"     class="ctrl-btn confirm-ok-btn">OK</button>
+        </div>
       </div>
     </div>
 

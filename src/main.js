@@ -40,6 +40,25 @@ import {
   roomCode, myPlayer, isOnline, unflattenBoard,
 } from './multiplayer.js';
 
+// ─── Custom confirm dialog ────────────────────────────────────────────────────
+function showConfirm(msg) {
+  return new Promise(resolve => {
+    const modal = document.getElementById('confirm-modal');
+    document.getElementById('confirm-msg').textContent = msg;
+    modal.classList.add('open');
+    const cleanup = (result) => {
+      modal.classList.remove('open');
+      document.getElementById('confirmOk').removeEventListener('click', onOk);
+      document.getElementById('confirmCancel').removeEventListener('click', onCancel);
+      resolve(result);
+    };
+    const onOk     = () => cleanup(true);
+    const onCancel = () => cleanup(false);
+    document.getElementById('confirmOk').addEventListener('click', onOk);
+    document.getElementById('confirmCancel').addEventListener('click', onCancel);
+  });
+}
+
 // ─── Canvas & renderer init ───────────────────────────────────────────────────
 const canvas = document.getElementById('c');
 initRenderer(canvas);
@@ -312,11 +331,11 @@ helpOverlay.addEventListener('click', e => { if (e.target === helpOverlay) helpO
 
 // ─── Size & mode buttons (local only) ────────────────────────────────────────
 document.querySelectorAll('#sizeButtons button').forEach(btn => {
-  btn.onclick = () => {
+  btn.onclick = async () => {
     if (isOnline) return; // locked in online mode
     const newN = parseInt(btn.dataset.size);
     if (newN === N) return;
-    if (history.length > 0 && !confirm('Start a new game with this board size?')) return;
+    if (history.length > 0 && !await showConfirm('Start a new game with this board size?')) return;
     setN(newN);
     syncSizeButtons();
     setupBoard();
