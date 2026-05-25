@@ -667,7 +667,7 @@ window.addEventListener('resize', resize);
 // ─── Settings panel ───────────────────────────────────────────────────────────
 const settingsModal = document.getElementById('settings-modal');
 
-function openSettings()  { settingsModal.style.display = 'flex'; }
+function openSettings()  { settingsModal.style.display = 'block'; settingsModal.scrollTop = 0; }
 function closeSettings() { settingsModal.style.display = 'none'; }
 
 document.getElementById('gearBtn').onclick     = openSettings;
