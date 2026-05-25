@@ -47,19 +47,41 @@ export function attachMouseControls(canvas, onClickAt) {
 // ─── Touch ───────────────────────────────────────────────────────────────────
 export function attachTouchControls(canvas, onClickAt) {
   let wasMultiTouch = false;
+  let lastPinchDist = null;
+
+  function pinchDist(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx*dx + dy*dy);
+  }
 
   canvas.addEventListener('touchstart', e => {
     if (e.touches.length === 1) {
       dragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; dragDist = 0;
       wasMultiTouch = false;
+      lastPinchDist = null;
     } else {
-      // Second (or more) finger added — this is never a tap
+      // Two or more fingers — never a tap, start pinch tracking
       wasMultiTouch = true;
       dragDist = Infinity;
+      dragging = false;
+      if (e.touches.length === 2) lastPinchDist = pinchDist(e.touches);
     }
   }, { passive: true });
 
   canvas.addEventListener('touchmove', e => {
+    // ── Pinch-to-zoom (two fingers) ──────────────────────────────────────────
+    if (e.touches.length === 2) {
+      e.preventDefault(); // stops browser page-zoom while pinching
+      const dist = pinchDist(e.touches);
+      if (lastPinchDist !== null) {
+        radius = Math.max(3, Math.min(40, radius - (dist - lastPinchDist) * 0.05));
+        updateCamera();
+      }
+      lastPinchDist = dist;
+      return;
+    }
+    // ── Single-finger orbit ───────────────────────────────────────────────────
     if (!dragging || e.touches.length !== 1) return;
     const dx = e.touches[0].clientX - lastX, dy = e.touches[0].clientY - lastY;
     dragDist += Math.sqrt(dx*dx + dy*dy);
@@ -67,7 +89,7 @@ export function attachTouchControls(canvas, onClickAt) {
     phi = Math.max(0.12, Math.min(Math.PI - 0.12, phi - dy * 0.007));
     lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
     updateCamera();
-  }, { passive: true });
+  }, { passive: false }); // must be non-passive to call preventDefault on pinch
 
   canvas.addEventListener('touchend', e => {
     // Tap = single finger lifted, ALL fingers now off screen, no multi-touch occurred
@@ -76,6 +98,7 @@ export function attachTouchControls(canvas, onClickAt) {
     if (e.touches.length === 0) {
       dragging = false;
       wasMultiTouch = false;
+      lastPinchDist = null;
     }
   });
 }
