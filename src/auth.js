@@ -11,21 +11,31 @@ import {
 
 const provider = new GoogleAuthProvider();
 
+/** True on phones/tablets where popups are unreliable. */
+const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
 /**
- * Signs in with Google. On mobile/browsers that block popups,
- * falls back to redirect automatically.
+ * Signs in with Google.
+ * Mobile → always uses redirect (popup unreliable).
+ * Desktop → tries popup, falls back to redirect if blocked.
  */
 export async function signInWithGoogle() {
+  if (isMobile) {
+    sessionStorage.setItem('pendingCreateGame', '1');
+    await signInWithRedirect(auth, provider);
+    return null; // page will reload after redirect
+  }
   try {
     return await signInWithPopup(auth, provider);
   } catch (err) {
-    // popup blocked or cancelled — fall back to redirect
+    // popup blocked or closed — fall back to redirect
     if (err.code === 'auth/popup-blocked' ||
         err.code === 'auth/popup-cancelled-by-user' ||
-        err.code === 'auth/cancelled-popup-request') {
+        err.code === 'auth/cancelled-popup-request' ||
+        err.code === 'auth/popup-closed-by-user') {
       sessionStorage.setItem('pendingCreateGame', '1');
       await signInWithRedirect(auth, provider);
-      return null; // page will reload
+      return null;
     }
     throw err;
   }
