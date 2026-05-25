@@ -149,6 +149,12 @@ function score1ply(x, y, z, player, brd, phase) {
 
   if (phase === 'opening') s += openingBonus(x, y, z, player, brd);
 
+  // Heavy penalty for filling completely enclosed own territory.
+  // All 6 neighbours (within bounds) are own stones → this cell is an interior void;
+  // placing here wastes a move and gains nothing strategically.
+  const nbrs = simNeighbors(x, y, z);
+  if (nbrs.length > 0 && nbrs.every(([nx, ny, nz]) => brd[nx][ny][nz] === player)) s -= 500;
+
   return s;
 }
 
@@ -325,6 +331,15 @@ export function aiMove(player) {
   const rootCands = N <= 3 ? 20 : N <= 5 ? 15 : N <= 7 ? 10 : 6;
   const deepCands = N <= 3 ? 12 : N <= 5 ? 8  : N <= 7 ? 5  : 4;
 
+  // ── Pass evaluation ──────────────────────────────────────────────────────────
+  // Score of PASSING = run a shallow search where the opponent moves first.
+  // If no placement beats this, the AI should pass instead of wasting a move.
+  // Skipped during the opening so the AI always plays in the early game.
+  const passDepth = Math.min(depth - 1, 2);
+  const passScore = (phase !== 'opening')
+    ? minimax(board, passDepth, -Infinity, Infinity, false, player, phase, deepCands)
+    : -Infinity;
+
   // Order root candidates by 1-ply score so the best moves are searched first
   // (this maximises how often alpha-beta can prune early)
   const rootCandidates = moves
@@ -332,7 +347,7 @@ export function aiMove(player) {
     .sort((a, b) => b.h - a.h)
     .slice(0, rootCands);
 
-  let best = null, bestScore = -Infinity;
+  let best = null, bestNoisyScore = -Infinity, bestCleanScore = -Infinity;
 
   for (const { move: [x, y, z] } of rootCandidates) {
     const result = simApply(board, x, y, z, player);
@@ -340,10 +355,19 @@ export function aiMove(player) {
 
     // Search from opponent's perspective one level down
     const s = minimax(result.b, depth - 1, -Infinity, Infinity, false, player, phase, deepCands);
-    const finalScore = s + Math.random() * 5; // tiny noise to break ties naturally
+    const noisy = s + Math.random() * 5; // tiny noise to break ties naturally
 
-    if (finalScore > bestScore) { bestScore = finalScore; best = [x, y, z]; }
+    if (noisy > bestNoisyScore) {
+      bestNoisyScore = noisy;
+      bestCleanScore = s;   // track clean score for pass comparison
+      best = [x, y, z];
+    }
   }
 
-  return best ?? rootCandidates[0]?.move ?? null;
+  // Pass if no move is genuinely better than passing.
+  // A small margin (+5) favours playing over passing when scores are virtually equal,
+  // but correctly passes when all remaining moves just fill settled territory.
+  if (best === null || bestCleanScore <= passScore + 5) return null;
+
+  return best;
 }
