@@ -1,0 +1,12 @@
+{
+  "name": "3D Go",
+  "short_name": "3D Go",
+  "description": "Play Go on a 3D cubic board",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
+  "icons": [
+    { "src": "/icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
