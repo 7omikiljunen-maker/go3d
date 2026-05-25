@@ -18,6 +18,8 @@ let localSeq             = 0;
 let guestSeenOnce        = false;
 let gameStarted          = false;
 let opponentLeftNotified = false;
+let lastSeenUndoReq      = 0;   // last undoReq.seq handled as the responder
+let pendingMyUndoSeq     = 0;   // seq of our outgoing request (0 = none)
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -122,8 +124,11 @@ export async function joinRoom(code) {
  * onStateChange(remoteData)  — opponent pushed a new move.
  * onOpponentJoined()         — guest connected (host side only).
  * onOpponentLeft()           — opponent disconnected or clicked Leave.
+ * onUndoRequest(reqSeq)      — opponent is requesting an undo (optional).
+ * onUndoResponse(accepted)   — our undo request was accepted/declined (optional).
  */
-export function subscribeRoom(onStateChange, onOpponentJoined, onOpponentLeft) {
+export function subscribeRoom(onStateChange, onOpponentJoined, onOpponentLeft,
+                               onUndoRequest, onUndoResponse) {
   if (!roomRef) return;
   unsubRoom = onValue(roomRef, snap => {
     if (!snap.exists()) return;
@@ -156,7 +161,40 @@ export function subscribeRoom(onStateChange, onOpponentJoined, onOpponentLeft) {
       localSeq = d.seq;
       onStateChange(d);
     }
+
+    // ── Undo request from opponent ─────────────────────────────────────────
+    const undoReq = d.undoReq;
+    if (undoReq && undoReq.from !== myPlayer && undoReq.seq > lastSeenUndoReq) {
+      lastSeenUndoReq = undoReq.seq;
+      if (onUndoRequest) onUndoRequest(undoReq.seq);
+    }
+
+    // ── Undo response for our pending request ──────────────────────────────
+    const undoResp = d.undoResp;
+    if (undoResp && undoResp.forSeq === pendingMyUndoSeq && pendingMyUndoSeq > 0) {
+      const accepted = undoResp.accepted;
+      pendingMyUndoSeq = 0;
+      if (onUndoResponse) onUndoResponse(accepted);
+    }
   });
+}
+
+// ─── Undo request / response ──────────────────────────────────────────────────
+/** Requester: broadcast an undo request. Returns the seq number. */
+export async function sendUndoRequest() {
+  if (!roomRef) return 0;
+  pendingMyUndoSeq++;
+  await update(roomRef, {
+    undoReq:  { from: myPlayer, seq: pendingMyUndoSeq },
+    undoResp: null,
+  });
+  return pendingMyUndoSeq;
+}
+
+/** Responder: reply to an undo request. */
+export async function sendUndoResponse(reqSeq, accepted) {
+  if (!roomRef) return;
+  await update(roomRef, { undoResp: { forSeq: reqSeq, accepted } });
 }
 
 // ─── Push game state (after your move/pass) ───────────────────────────────────
@@ -214,4 +252,6 @@ export function leaveRoom() {
   guestSeenOnce        = false;
   gameStarted          = false;
   opponentLeftNotified = false;
+  lastSeenUndoReq      = 0;
+  pendingMyUndoSeq     = 0;
 }

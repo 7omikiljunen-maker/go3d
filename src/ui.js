@@ -37,9 +37,9 @@ export function updateAiBtn(gameOver, playMode, current) {
   btn.style.display = 'none';
 }
 
-export function updateUndoBtn(historyLen, gameOver, forceDisabled) {
+export function updateUndoBtn(historyLen, forceDisabled) {
   const btn = document.getElementById('undoBtn');
-  btn.disabled = gameOver || historyLen === 0 || forceDisabled;
+  btn.disabled = historyLen === 0 || forceDisabled;
   btn.style.opacity = btn.disabled ? '0.35' : '1';
 }
 

@@ -37,6 +37,7 @@ import {
 import {
   createRoom, joinRoom, subscribeRoom, pushGameState,
   sendChat, subscribeChat, signalLeave, leaveRoom,
+  sendUndoRequest, sendUndoResponse,
   roomCode, myPlayer, isOnline, unflattenBoard,
 } from './multiplayer.js';
 
@@ -95,8 +96,8 @@ function refreshHints() {
 function refreshUI() {
   updateUI(current, captures, isComputerTurn);
   updateAiBtn(gameOver, playMode, current);
-  // Disable undo only in CvC (always AI) or online; PvC allows undo at any time
-  updateUndoBtn(history.length, gameOver, isOnline);
+  // Disable undo only while waiting for the opponent's undo response
+  updateUndoBtn(history.length, waitingForUndoResponse);
 }
 
 // ─── Sync UI button active states ────────────────────────────────────────────
@@ -126,6 +127,8 @@ function exitOnlineMode() {
   unreadCount = 0;
   chatBadge.style.display = 'none';
   chatMessages.innerHTML = '';
+  waitingForUndoResponse = false;
+  document.getElementById('undoBtn').textContent = 'Undo';
 }
 
 // ─── Place stone ─────────────────────────────────────────────────────────────
@@ -184,15 +187,58 @@ function applyOpponentState(remoteData) {
 }
 
 // ─── Undo ─────────────────────────────────────────────────────────────────────
+let waitingForUndoResponse = false;
+
 function handleUndo() {
-  if (isOnline || gameOver || history.length === 0) return;
+  if (history.length === 0) return;
 
-  if (!undoMove()) return; // always undo exactly one move
+  if (isOnline) { requestOnlineUndo(); return; }
 
+  // Local undo (offline modes, including post-game)
+  const wasOver = gameOver; // undoMove() clears gameOver; capture it first
+  if (!undoMove()) return;
   rebuildStoneMeshes(lastPlaced);
   syncLayerVisibility(lastPlaced);
+  if (wasOver) hideOverlay();
   saveToStorage();
   refreshUI(); refreshHints();
+}
+
+// ─── Online undo — request/response ──────────────────────────────────────────
+function requestOnlineUndo() {
+  if (waitingForUndoResponse || history.length === 0) return;
+  waitingForUndoResponse = true;
+  document.getElementById('undoBtn').textContent = 'Waiting…';
+  refreshUI(); // disables button via waitingForUndoResponse
+  sendUndoRequest();
+}
+
+/** Called on the RESPONDER's side when opponent requests undo. */
+function handleUndoRequest(reqSeq) {
+  showConfirm('Opponent wants to undo their last move. Allow?').then(accepted => {
+    sendUndoResponse(reqSeq, accepted);
+  });
+}
+
+/** Called on the REQUESTER's side when opponent responds. */
+async function handleUndoResponse(accepted) {
+  waitingForUndoResponse = false;
+  const undoBtn = document.getElementById('undoBtn');
+  undoBtn.textContent = 'Undo';
+
+  if (accepted) {
+    const wasOver = gameOver;
+    if (!undoMove()) { refreshUI(); return; }
+    rebuildStoneMeshes(lastPlaced);
+    syncLayerVisibility(lastPlaced);
+    if (wasOver) hideOverlay();
+    refreshUI(); refreshHints();
+    await pushGameState({ board, N, current, captures, consecutivePasses, gameOver, koState, lastPlaced });
+  } else {
+    refreshUI(); // re-enable button
+    undoBtn.textContent = 'Declined';
+    setTimeout(() => { undoBtn.textContent = 'Undo'; }, 2000);
+  }
 }
 
 // ─── AI move ─────────────────────────────────────────────────────────────────
@@ -407,7 +453,7 @@ document.getElementById('createGameBtn').onclick = async () => {
     syncModeButtons();
     subscribeChat(handleNewChatMsg);
     refreshUI(); refreshHints();
-  }, handleOpponentLeft);
+  }, handleOpponentLeft, handleUndoRequest, handleUndoResponse);
 };
 
 // ─── Cancel waiting ───────────────────────────────────────────────────────────
@@ -446,7 +492,7 @@ document.getElementById('joinGameBtn').onclick = async () => {
   enterOnlineMode();
   syncModeButtons();
 
-  subscribeRoom(applyOpponentState, null, handleOpponentLeft);
+  subscribeRoom(applyOpponentState, null, handleOpponentLeft, handleUndoRequest, handleUndoResponse);
   subscribeChat(handleNewChatMsg);
   refreshUI(); refreshHints();
 };
