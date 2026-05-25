@@ -1,4 +1,4 @@
-// ─── ai.js — 2-ply heuristic AI with opening strategy ────────────────────────
+// ─── ai.js — Minimax AI with alpha-beta pruning ───────────────────────────────
 import { N, board, legalMoves } from './board.js';
 
 // ─── Self-contained board helpers (work on explicit board copies) ─────────────
@@ -61,7 +61,6 @@ function boardStoneCount() {
 
 function getPhase() {
   const count  = boardStoneCount();
-  // Opening lasts roughly until each player has placed N² / 2 stones each
   const openingEnd = Math.max(Math.floor(N * N * 0.4), N * 2);
   const midEnd     = Math.floor(N * N * N * 0.5);
   if (count < openingEnd) return 'opening';
@@ -70,69 +69,50 @@ function getPhase() {
 }
 
 // ─── Opening strategy helpers ─────────────────────────────────────────────────
-
-// "Star point" coordinates for each board size.
-// These are the high-influence starting positions, analogous to 4-4 in 2D Go.
 function starCoordSet() {
-  // Returns which indices along one axis are star-point positions
-  if (N === 3) return new Set([1]);           // just the centre slice
-  if (N === 5) return new Set([1, 3]);        // one-in from each edge
-  if (N === 7) return new Set([2, 4]);        // two-in from each edge
-  return      new Set([2, 4, 6]);             // 9³: three bands
+  if (N === 3) return new Set([1]);
+  if (N === 5) return new Set([1, 3]);
+  if (N === 7) return new Set([2, 4]);
+  return      new Set([2, 4, 6]);
 }
 
 function isStarPoint(x, y, z) {
   const sc = starCoordSet();
   if (sc.has(x) && sc.has(y) && sc.has(z)) return true;
-  // Always include the geometric centre regardless of star coord set
   const c = (N - 1) / 2;
   return x === c && y === c && z === c;
 }
 
-// How "exposed" is this point: 0 = fully interior, 1 = on a face, 2 = on an edge, 3 = corner
 function edgeDegree(x, y, z) {
   return ([0, N-1].includes(x) ? 1 : 0)
        + ([0, N-1].includes(y) ? 1 : 0)
        + ([0, N-1].includes(z) ? 1 : 0);
 }
 
-// Does the player already have at least one stone in horizontal layer `y`?
 function playerInLayer(brd, y, player) {
   for (let x=0; x<N; x++) for (let z=0; z<N; z++)
     if (brd[x][y][z] === player) return true;
   return false;
 }
 
-// Opening-phase bonus: star points, layer spread, corner avoidance
 function openingBonus(x, y, z, player, brd) {
   let bonus = 0;
-
-  // ── Star points ────────────────────────────────────────────────────────────
   if (isStarPoint(x, y, z)) {
     bonus += 100;
   } else {
-    // Smaller bonus for being one step away from a star point
     for (const [nx, ny, nz] of simNeighbors(x, y, z)) {
       if (isStarPoint(nx, ny, nz)) { bonus += 30; break; }
     }
   }
-
-  // ── Layer spread (3D-specific) ─────────────────────────────────────────────
-  // Playing in a new layer expands your 3D presence — reward it.
   if (!playerInLayer(brd, y, player)) bonus += 50;
-
-  // ── Structural penalties ───────────────────────────────────────────────────
-  // In 3D Go, corners and edges are *weak* (fewer liberties), unlike 2D Go.
-  // Corner: 3 liberties  |  Edge: 4 liberties  |  Face: 5  |  Interior: 6
   const ed = edgeDegree(x, y, z);
-  if (ed === 3) bonus -= 90;   // corner — avoid in opening
-  if (ed === 2) bonus -= 40;   // edge   — slightly discouraged
-  if (ed === 1) bonus -= 10;   // face   — mild penalty
-
+  if (ed === 3) bonus -= 90;
+  if (ed === 2) bonus -= 40;
+  if (ed === 1) bonus -= 10;
   return bonus;
 }
 
-// ─── 1-ply heuristic score for a move ────────────────────────────────────────
+// ─── 1-ply heuristic score for move ordering ─────────────────────────────────
 function score1ply(x, y, z, player, brd, phase) {
   let s = 0;
   const opp = 3 - player;
@@ -163,54 +143,136 @@ function score1ply(x, y, z, player, brd, phase) {
   const nearStone = simNeighbors(x, y, z).some(([nx, ny, nz]) => brd[nx][ny][nz] !== 0);
   if (nearStone) s += 30;
 
-  // Centre preference — stronger in 3D than in 2D Go
   const cx2 = x - (N-1)/2, cy2 = y - (N-1)/2, cz2 = z - (N-1)/2;
   s += 20 - Math.sqrt(cx2*cx2 + cy2*cy2 + cz2*cz2) * 3;
 
-  // Opening: star points, layer spread, no weak corners
   if (phase === 'opening') s += openingBonus(x, y, z, player, brd);
 
   return s;
 }
 
-// ─── Main AI entry point (2-ply: my best move minus opponent's best response) ─
+// ─── Static board evaluation (used at leaf nodes) ────────────────────────────
+// Scores the whole board from aiPlayer's perspective.
+// +ve = good for AI, -ve = bad for AI.
+function staticEval(brd, aiPlayer) {
+  let score = 0;
+  const visited = new Set();
+  const key = (x, y, z) => `${x},${y},${z}`;
+
+  for (let x = 0; x < N; x++) for (let y = 0; y < N; y++) for (let z = 0; z < N; z++) {
+    const color = brd[x][y][z];
+    if (!color) continue;
+    const k = key(x, y, z);
+    if (visited.has(k)) continue;
+
+    const { stones, liberties } = simGetGroup(brd, x, y, z);
+    stones.forEach(([sx, sy, sz]) => visited.add(key(sx, sy, sz)));
+
+    const sign     = color === aiPlayer ? 1 : -1;
+    const libCount = liberties.length;
+    const size     = stones.length;
+
+    // Stone count
+    score += sign * size * 100;
+
+    // Liberty pressure — atari is critical
+    if      (libCount === 1) score -= sign * 450;  // in atari: very dangerous
+    else if (libCount === 2) score -= sign * 80;   // one threat away from atari
+    else                     score += sign * Math.min(libCount, 6) * 12;
+
+    // Larger connected groups are more stable
+    score += sign * size * 15;
+  }
+
+  return score;
+}
+
+// ─── Candidate moves: top `limit` moves ordered by 1-ply heuristic ───────────
+function candidateMoves(brd, player, limit, phase) {
+  const moves = [];
+  for (let x = 0; x < N; x++)
+    for (let y = 0; y < N; y++)
+      for (let z = 0; z < N; z++)
+        if (brd[x][y][z] === 0) moves.push([x, y, z]);
+
+  if (moves.length <= limit) return moves;
+
+  return moves
+    .map(([x, y, z]) => ({ move: [x, y, z], h: score1ply(x, y, z, player, brd, phase) }))
+    .sort((a, b) => b.h - a.h)
+    .slice(0, limit)
+    .map(e => e.move);
+}
+
+// ─── Alpha-beta minimax ───────────────────────────────────────────────────────
+// isMaximizing = true  → it's the AI's turn (maximise score)
+// isMaximizing = false → it's the opponent's turn (minimise score)
+function minimax(brd, depth, alpha, beta, isMaximizing, aiPlayer, phase, candLimit) {
+  if (depth === 0) return staticEval(brd, aiPlayer);
+
+  const player    = isMaximizing ? aiPlayer : 3 - aiPlayer;
+  const candidates = candidateMoves(brd, player, candLimit, phase);
+  if (candidates.length === 0) return staticEval(brd, aiPlayer);
+
+  if (isMaximizing) {
+    let best = -Infinity;
+    for (const [x, y, z] of candidates) {
+      const result = simApply(brd, x, y, z, player);
+      if (!result) continue;
+      const s = minimax(result.b, depth - 1, alpha, beta, false, aiPlayer, phase, candLimit);
+      if (s > best) best = s;
+      if (s > alpha) alpha = s;
+      if (beta <= alpha) break; // ── prune ──
+    }
+    return best === -Infinity ? staticEval(brd, aiPlayer) : best;
+  } else {
+    let best = Infinity;
+    for (const [x, y, z] of candidates) {
+      const result = simApply(brd, x, y, z, player);
+      if (!result) continue;
+      const s = minimax(result.b, depth - 1, alpha, beta, true, aiPlayer, phase, candLimit);
+      if (s < best) best = s;
+      if (s < beta) beta = s;
+      if (beta <= alpha) break; // ── prune ──
+    }
+    return best === Infinity ? staticEval(brd, aiPlayer) : best;
+  }
+}
+
+// ─── Main AI entry point ──────────────────────────────────────────────────────
 export function aiMove(player) {
   const moves = legalMoves(player);
   if (moves.length === 0) return null;
 
   const phase = getPhase();
-  const opp = 3 - player;
 
-  // Score all moves with 1-ply heuristic + opening strategy
-  const scored = moves
+  // Depth and candidate limits tuned per board size to stay responsive
+  //   depth     = how many half-moves to look ahead
+  //   rootCands = how many moves to consider at the root
+  //   deepCands = how many moves to consider at each deeper level
+  const depth     = N <= 3 ? 4 : N <= 5 ? 3 : 2;
+  const rootCands = N <= 3 ? 20 : N <= 5 ? 15 : N <= 7 ? 10 : 6;
+  const deepCands = N <= 3 ? 12 : N <= 5 ? 8  : N <= 7 ? 5  : 4;
+
+  // Order root candidates by 1-ply score so the best moves are searched first
+  // (this maximises how often alpha-beta can prune early)
+  const rootCandidates = moves
     .map(([x, y, z]) => ({ move: [x, y, z], h: score1ply(x, y, z, player, board, phase) }))
-    .sort((a, b) => b.h - a.h);
-
-  // Fewer 2-ply candidates for larger boards to stay responsive
-  const maxCandidates = N <= 5 ? 20 : N <= 7 ? 12 : 6;
-  const candidates = scored.slice(0, Math.min(maxCandidates, scored.length));
+    .sort((a, b) => b.h - a.h)
+    .slice(0, rootCands);
 
   let best = null, bestScore = -Infinity;
 
-  for (const { move: [x, y, z], h } of candidates) {
+  for (const { move: [x, y, z] } of rootCandidates) {
     const result = simApply(board, x, y, z, player);
     if (!result) continue;
 
-    // Find opponent's best immediate capture in response
-    let maxOppCapture = 0;
-    for (let ox = 0; ox < N; ox++) {
-      for (let oy = 0; oy < N; oy++) {
-        for (let oz = 0; oz < N; oz++) {
-          if (result.b[ox][oy][oz] !== 0) continue;
-          const or2 = simApply(result.b, ox, oy, oz, opp);
-          if (or2 && or2.captured > maxOppCapture) maxOppCapture = or2.captured;
-        }
-      }
-    }
+    // Search from opponent's perspective one level down
+    const s = minimax(result.b, depth - 1, -Infinity, Infinity, false, player, phase, deepCands);
+    const finalScore = s + Math.random() * 5; // tiny noise to break ties naturally
 
-    const finalScore = h - maxOppCapture * 180 + Math.random() * 8;
     if (finalScore > bestScore) { bestScore = finalScore; best = [x, y, z]; }
   }
 
-  return best ?? scored[0].move;
+  return best ?? rootCandidates[0]?.move ?? null;
 }
