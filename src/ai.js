@@ -132,11 +132,12 @@ function score1ply(x, y, z, player, brd, phase) {
   for (const [nx, ny, nz] of simNeighbors(x, y, z)) {
     if (b[nx][ny][nz] === player) {
       const { liberties } = simGetGroup(b, nx, ny, nz);
-      if (liberties.length > 1) s += 50;
+      if (liberties.length > 1) s += 30;  // reduced: less reward for safe connectivity
     }
     if (b[nx][ny][nz] === opp) {
       const { liberties } = simGetGroup(b, nx, ny, nz);
-      if (liberties.length === 1) s += 80;
+      if (liberties.length === 1) s += 160; // increased: aggressively hunt atari
+      if (liberties.length === 2) s += 60;  // also reward putting opponent under pressure
     }
   }
 
@@ -175,13 +176,30 @@ function staticEval(brd, aiPlayer) {
     // Stone count
     score += sign * size * 100;
 
-    // Liberty pressure — atari is critical
-    if      (libCount === 1) score -= sign * 450;  // in atari: very dangerous
-    else if (libCount === 2) score -= sign * 80;   // one threat away from atari
-    else                     score += sign * Math.min(libCount, 6) * 12;
+    // Liberty pressure — less defensive than before so AI takes more risks
+    if      (libCount === 1) score -= sign * 250;  // atari: still bad but not paralysing
+    else if (libCount === 2) score -= sign * 30;   // mild pressure
+    else                     score += sign * Math.min(libCount, 6) * 10;
 
-    // Larger connected groups are more stable
-    score += sign * size * 15;
+    // Group size — reduced so AI doesn't obsess over connectivity
+    score += sign * size * 5;
+  }
+
+  // ── Influence: reward controlling empty space ────────────────────────────────
+  // For each empty cell, if only AI stones are adjacent → AI territory.
+  // If only opponent stones are adjacent → opponent territory.
+  // This pushes the AI to expand and "capture areas" rather than just hug its stones.
+  for (let x = 0; x < N; x++) for (let y = 0; y < N; y++) for (let z = 0; z < N; z++) {
+    if (brd[x][y][z] !== 0) continue;
+    let nearAI = false, nearOpp = false;
+    for (const [dx, dy, dz] of [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]) {
+      const nx = x+dx, ny = y+dy, nz = z+dz;
+      if (nx<0||nx>=N||ny<0||ny>=N||nz<0||nz>=N) continue;
+      if (brd[nx][ny][nz] === aiPlayer)     nearAI  = true;
+      if (brd[nx][ny][nz] === 3 - aiPlayer) nearOpp = true;
+    }
+    if (nearAI  && !nearOpp) score += 18;  // AI controls this empty cell
+    if (nearOpp && !nearAI)  score -= 18;  // opponent controls this empty cell
   }
 
   return score;
