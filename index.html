@@ -465,6 +465,32 @@
       color: var(--accent-text) !important;
     }
 
+    /* ── Payment gate ───────────────────────────────────────────────────── */
+    #payment-modal {
+      display: none; position: absolute; inset: 0;
+      background: var(--backdrop);
+      align-items: center; justify-content: center;
+      z-index: 50;
+    }
+    #payment-modal.open { display: flex; }
+    #payment-box {
+      background: var(--surface);
+      border: 0.5px solid var(--surface-border);
+      border-radius: 16px; padding: 28px 32px;
+      color: var(--text); max-width: 300px; width: 90%;
+      text-align: center;
+    }
+    #payment-title { font-size: 16px; font-weight: 600; margin-bottom: 10px; }
+    #payment-body  { font-size: 13px; color: var(--text-muted); line-height: 1.7; margin-bottom: 20px; }
+    #payment-btns  { display: flex; gap: 10px; justify-content: center; margin-bottom: 12px; }
+    #payment-btns .ctrl-btn { flex: 1; padding: 8px 0; font-size: 14px; }
+    #payBtn {
+      background: var(--accent-bg) !important;
+      border-color: var(--accent-border) !important;
+      color: var(--accent-text) !important;
+    }
+    #payStatus { font-size: 11px; color: var(--text-muted); min-height: 14px; }
+
     /* ── Online modal (create / join) ────────────────────────────────────── */
     #online-modal, #waiting-overlay {
       display: none; position: absolute; inset: 0;
@@ -626,6 +652,22 @@
       <div id="chat-input-row">
         <input id="chatInput" placeholder="Message…" maxlength="200"/>
         <button id="chatSendBtn">↑</button>
+      </div>
+    </div>
+
+    <!-- ── Payment gate ───────────────────────────────────────────────── -->
+    <div id="payment-modal">
+      <div id="payment-box">
+        <div id="payment-title">One-time payment</div>
+        <div id="payment-body">
+          Creating online games requires a one-time €1 payment.<br>
+          Joining a friend's game is always free.
+        </div>
+        <div id="payment-btns">
+          <button id="payBackBtn" class="ctrl-btn">Cancel</button>
+          <button id="payBtn"     class="ctrl-btn">Pay €1 →</button>
+        </div>
+        <div id="payStatus"></div>
       </div>
     </div>
 

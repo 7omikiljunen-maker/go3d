@@ -1,0 +1,10 @@
+# netlify.toml
+# The game itself is hosted on GitHub Pages.
+# Netlify is used only to run the stripe-webhook serverless function.
+
+[build]
+  publish = "public"       # serve the public/ folder (icon + manifest) — harmless
+
+[functions]
+  directory      = "netlify/functions"
+  node_bundler   = "esbuild"

@@ -35,6 +35,7 @@ import {
 } from './ui.js';
 
 import { signInWithGoogle, signOut, onAuthChange } from './auth.js';
+import { checkPaid, watchPaid } from './payment.js';
 
 import {
   createRoom, joinRoom, subscribeRoom, pushGameState,
@@ -458,27 +459,14 @@ document.querySelectorAll('.online-size-btn').forEach(btn => {
   };
 });
 
-// ─── Create game ──────────────────────────────────────────────────────────────
-document.getElementById('createGameBtn').onclick = async () => {
-  // ── Step 1: must be signed in ───────────────────────────────────────────
-  if (!currentUser) {
-    try {
-      const result = await signInWithGoogle();
-      currentUser = result.user;
-      updateAuthUI();
-    } catch (_) {
-      return; // user closed the popup — do nothing
-    }
-  }
-
-  // ── Step 2: payment check will go here (Step 6) ─────────────────────────
-
+// ─── Create game — core logic (called after auth + payment are confirmed) ─────
+async function doCreateGame() {
   const btn = document.getElementById('createGameBtn');
   btn.disabled = true;
   btn.textContent = 'Creating…';
 
   setN(onlineN);
-  setupBoard(); // init empty board with chosen size
+  setupBoard();
 
   const code = await createRoom(N, board);
 
@@ -490,7 +478,6 @@ document.getElementById('createGameBtn').onclick = async () => {
   waitingOvl.style.display = 'flex';
   roomCodeText.textContent = code;
 
-  // Listen: opponent joined / left
   subscribeRoom(applyOpponentState, () => {
     waitingOvl.style.display = 'none';
     enterOnlineMode();
@@ -498,6 +485,62 @@ document.getElementById('createGameBtn').onclick = async () => {
     subscribeChat(handleNewChatMsg);
     refreshUI(); refreshHints();
   }, handleOpponentLeft, handleUndoRequest, handleUndoResponse);
+}
+
+// ─── Payment gate ─────────────────────────────────────────────────────────────
+const STRIPE_LINK = 'https://buy.stripe.com/cNi3cv1d38TL6MzcFP4Vy00';
+let stopWatchingPayment = null;
+
+function showPaymentGate(uid) {
+  const modal = document.getElementById('payment-modal');
+  modal.classList.add('open');
+  document.getElementById('payStatus').textContent = '';
+  document.getElementById('payBtn').textContent = 'Pay €1 →';
+  document.getElementById('payBtn').disabled = false;
+
+  // Listen for Firebase confirmation — fires automatically when webhook writes paid:true
+  stopWatchingPayment = watchPaid(uid, () => {
+    closePaymentGate();
+    doCreateGame();
+  });
+
+  document.getElementById('payBtn').onclick = () => {
+    window.open(`${STRIPE_LINK}?client_reference_id=${uid}`, '_blank');
+    document.getElementById('payBtn').textContent = 'Waiting for payment…';
+    document.getElementById('payBtn').disabled = true;
+    document.getElementById('payStatus').textContent =
+      'Complete payment in the new tab — this page will update automatically.';
+  };
+
+  document.getElementById('payBackBtn').onclick = closePaymentGate;
+}
+
+function closePaymentGate() {
+  document.getElementById('payment-modal').classList.remove('open');
+  if (stopWatchingPayment) { stopWatchingPayment(); stopWatchingPayment = null; }
+}
+
+// ─── Create game button ───────────────────────────────────────────────────────
+document.getElementById('createGameBtn').onclick = async () => {
+  // Step 1: must be signed in
+  if (!currentUser) {
+    try {
+      const result = await signInWithGoogle();
+      currentUser = result.user;
+      updateAuthUI();
+    } catch (_) {
+      return; // user closed the popup
+    }
+  }
+
+  // Step 2: must have paid
+  const paid = await checkPaid(currentUser.uid);
+  if (!paid) {
+    showPaymentGate(currentUser.uid);
+    return;
+  }
+
+  await doCreateGame();
 };
 
 // ─── Cancel waiting ───────────────────────────────────────────────────────────
