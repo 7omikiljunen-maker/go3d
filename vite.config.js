@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  // '/' works for Netlify (served from root).
-  // Change back to '/go3d/' if deploying to GitHub Pages subfolder.
-  base: '/',
+  // '/go3d/' for GitHub Pages subfolder.
+  // Change to '/' when a custom domain (e.g. go3d.game) is connected.
+  base: '/go3d/',
 })
