@@ -700,6 +700,32 @@ document.getElementById('themeBtn').onclick = () => {
   applyTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light');
 };
 
+// ─── PWA install prompt ───────────────────────────────────────────────────────
+let installPrompt = null;
+const installRow = document.getElementById('installRow');
+const installBtn = document.getElementById('installBtn');
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  installPrompt = e;
+  installRow.style.display = '';          // show the row in settings
+});
+
+window.addEventListener('appinstalled', () => {
+  installPrompt = null;
+  installRow.style.display = 'none';      // hide after install
+});
+
+installBtn.onclick = async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  const { outcome } = await installPrompt.userChoice;
+  if (outcome === 'accepted') {
+    installPrompt = null;
+    installRow.style.display = 'none';
+  }
+};
+
 // Restore saved theme (or respect OS preference as default)
 const savedTheme = localStorage.getItem('go3d-theme') ||
   (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
