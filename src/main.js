@@ -34,7 +34,7 @@ import {
   showOverlay, hideOverlay, initScoringBtn, syncScoringBtn,
 } from './ui.js';
 
-import { signInWithGoogle, signOut, onAuthChange } from './auth.js';
+import { signInWithGoogle, signOut, onAuthChange, resolveRedirect } from './auth.js';
 import { checkPaid, watchPaid } from './payment.js';
 
 import {
@@ -82,6 +82,18 @@ onAuthChange(user => {
   currentUser = user;
   updateAuthUI();
 });
+
+// ─── Handle redirect sign-in (mobile) ────────────────────────────────────────
+resolveRedirect().then(result => {
+  if (!result) return;                     // no pending redirect
+  currentUser = result.user;
+  updateAuthUI();
+  if (sessionStorage.getItem('pendingCreateGame')) {
+    sessionStorage.removeItem('pendingCreateGame');
+    // resume create-game flow after redirect sign-in
+    onlineModal.style.display = 'flex';    // re-open the online modal
+  }
+}).catch(() => {});
 
 // ─── Canvas & renderer init ───────────────────────────────────────────────────
 const canvas = document.getElementById('c');
@@ -468,7 +480,15 @@ async function doCreateGame() {
   setN(onlineN);
   setupBoard();
 
-  const code = await createRoom(N, board);
+  let code;
+  try {
+    code = await createRoom(N, board);
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = '✦ Create game';
+    alert('Could not create game: ' + (err.code || err.message || err));
+    return;
+  }
 
   btn.disabled = false;
   btn.textContent = '✦ Create game';
