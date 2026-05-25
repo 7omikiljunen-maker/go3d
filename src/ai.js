@@ -183,6 +183,18 @@ function staticEval(brd, aiPlayer) {
 
     // Group size — reduced so AI doesn't obsess over connectivity
     score += sign * size * 5;
+
+    // Positional value: central stones are worth more than edge/corner stones.
+    // Distance is normalised by the board's half-side so the ±35-point range
+    // stays proportional on every board size (3³ through 9³).
+    // This persists through the full minimax search so the AI genuinely prefers
+    // the centre, not just as a move-ordering hint.
+    const halfSide = (N - 1) / 2 || 1;
+    for (const [sx, sy, sz] of stones) {
+      const dx = sx - halfSide, dy = sy - halfSide, dz = sz - halfSide;
+      const distNorm = Math.sqrt(dx*dx + dy*dy + dz*dz) / halfSide;
+      score += sign * (25 - distNorm * 20);
+    }
   }
 
   // ── Territory: BFS flood-fill from each player's stones ─────────────────────
