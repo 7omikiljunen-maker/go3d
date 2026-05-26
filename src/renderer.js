@@ -75,9 +75,9 @@ function buildStarfield() {
   const layers = [
     { count: 800, size: 0.06,  baseOpacity: 0.70, twinkles: false },
     { count: 350, size: 0.11,  baseOpacity: 0.90, twinkles: false },
-    { count: 120, size: 0.18,  baseOpacity: 1.00, twinkles: true  },
-    { count:  40, size: 0.30,  baseOpacity: 1.00, twinkles: true  },
-    { count:  10, size: 0.50,  baseOpacity: 1.00, twinkles: true  },
+    { count: 120, size: 0.28,  baseOpacity: 1.00, twinkles: true  },
+    { count:  40, size: 0.50,  baseOpacity: 1.00, twinkles: true  },
+    { count:  10, size: 0.85,  baseOpacity: 1.00, twinkles: true  },
   ];
 
   // Mostly white, occasionally tinted blue/yellow/red — like real stars
