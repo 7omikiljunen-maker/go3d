@@ -14,12 +14,27 @@ let roomRef              = null;
 let chatRef              = null;
 let unsubRoom            = null;
 let unsubChat            = null;
+let unsubConnected       = null;
 let localSeq             = 0;
 let guestSeenOnce        = false;
 let gameStarted          = false;
 let opponentLeftNotified = false;
 let lastSeenUndoReq      = 0;   // last undoReq.seq handled as the responder
 let pendingMyUndoSeq     = 0;   // seq of our outgoing request (0 = none)
+
+// Re-mark our online flag every time Firebase reconnects.
+// Without this, Firebase drops the connection after a few idle minutes,
+// fires the onDisconnect handler, and the opponent thinks we left.
+function watchPresence(code) {
+  const myField = myPlayer === 1 ? 'hostOnline' : 'guestOnline';
+  const myRef   = ref(db, `rooms/${code}/${myField}`);
+  const connRef = ref(db, '.info/connected');
+  unsubConnected = onValue(connRef, snap => {
+    if (snap.val() !== true) return;            // currently offline — wait for reconnect
+    onDisconnect(myRef).set(false);             // re-arm the disconnect cleanup
+    set(myRef, true).catch(() => {});           // mark ourselves online again
+  });
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -77,9 +92,6 @@ export async function createRoom(n, board) {
     lastZ:             null,
   });
 
-  // If the browser closes unexpectedly, mark host as offline automatically
-  onDisconnect(ref(db, `rooms/${code}/hostOnline`)).set(false);
-
   roomCode             = code;
   myPlayer             = 1;
   isOnline             = true;
@@ -87,6 +99,9 @@ export async function createRoom(n, board) {
   guestSeenOnce        = false;
   gameStarted          = false;
   opponentLeftNotified = false;
+
+  // Mark online + re-arm onDisconnect on every reconnect (handles Firebase idle drops)
+  watchPresence(code);
   return code;
 }
 
@@ -103,9 +118,6 @@ export async function joinRoom(code) {
 
   await update(r, { guestOnline: true, guestEverJoined: true });
 
-  // If the browser closes unexpectedly, mark guest as offline automatically
-  onDisconnect(ref(db, `rooms/${code}/guestOnline`)).set(false);
-
   roomRef              = r;
   chatRef              = ref(db, `rooms/${code}/chat`);
   roomCode             = code;
@@ -116,6 +128,8 @@ export async function joinRoom(code) {
   gameStarted          = true;  // guest is immediately in-game
   opponentLeftNotified = false;
 
+  // Mark online + re-arm onDisconnect on every reconnect (handles Firebase idle drops)
+  watchPresence(code);
   return { ok: true, N: d.N, data: d };
 }
 
@@ -241,8 +255,9 @@ export function subscribeChat(onNewMessage) {
 
 // ─── Leave room ───────────────────────────────────────────────────────────────
 export function leaveRoom() {
-  if (unsubRoom) { unsubRoom(); unsubRoom = null; }
-  if (unsubChat) { unsubChat(); unsubChat = null; }
+  if (unsubRoom)      { unsubRoom(); unsubRoom = null; }
+  if (unsubChat)      { unsubChat(); unsubChat = null; }
+  if (unsubConnected) { unsubConnected(); unsubConnected = null; }
   roomRef              = null;
   chatRef              = null;
   roomCode             = null;
