@@ -67,17 +67,16 @@ export function initRenderer(canvas) {
   scene.add(starfieldGroup);
 }
 
-// ─── Starfield — procedural, no textures ─────────────────────────────────────
+// ─── Starfield + nebula — procedural, no textures ────────────────────────────
 function buildStarfield() {
   const group = new THREE.Group();
 
-  // Four layers: dim distant stars → big bright foreground stars
-  // The bright layer twinkles, the rest are static for performance.
+  // ── STARS — four layers, brighter than before ─────────────────────────────
   const layers = [
-    { count: 800, size: 0.035, baseOpacity: 0.35, twinkles: false },
-    { count: 350, size: 0.055, baseOpacity: 0.65, twinkles: false },
-    { count: 120, size: 0.08,  baseOpacity: 0.95, twinkles: true  },
-    { count:  35, size: 0.13,  baseOpacity: 1.00, twinkles: true  },
+    { count: 800, size: 0.05,  baseOpacity: 0.70, twinkles: false },
+    { count: 350, size: 0.08,  baseOpacity: 0.90, twinkles: false },
+    { count: 120, size: 0.12,  baseOpacity: 1.00, twinkles: true  },
+    { count:  35, size: 0.18,  baseOpacity: 1.00, twinkles: true  },
   ];
 
   // Mostly white, occasionally tinted blue/yellow/red — like real stars
@@ -98,7 +97,6 @@ function buildStarfield() {
     const positions = new Float32Array(cfg.count * 3);
     const colors    = new Float32Array(cfg.count * 3);
     for (let i = 0; i < cfg.count; i++) {
-      // Distribute on a sphere far behind the board
       const radius = 80 + Math.random() * 50;
       const theta  = Math.random() * Math.PI * 2;
       const phi    = Math.acos(2 * Math.random() - 1);
@@ -128,6 +126,78 @@ function buildStarfield() {
     mat.userData.twinkles     = cfg.twinkles;
 
     group.add(new THREE.Points(geom, mat));
+  }
+
+  // ── NEBULA SPRITES — patchy procedural gas clouds ─────────────────────────
+  const nebulaPalette = [
+    [110,  40, 180],   // purple
+    [ 40,  70, 200],   // blue
+    [170,  40, 130],   // magenta
+    [ 60, 120, 200],   // teal-blue
+  ];
+
+  function makeNebulaTexture(rgb) {
+    const size = 256;
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    const ctx = cv.getContext('2d');
+
+    // Layer ~15 overlapping coloured blobs with additive compositing
+    ctx.globalCompositeOperation = 'lighter';
+    const [r0, g0, b0] = rgb;
+    for (let i = 0; i < 15; i++) {
+      const cx = size/2 + (Math.random() - 0.5) * size * 0.7;
+      const cy = size/2 + (Math.random() - 0.5) * size * 0.7;
+      const rad = size * (0.08 + Math.random() * 0.28);
+      const r = Math.max(0, Math.min(255, r0 + (Math.random() - 0.5) * 70)) | 0;
+      const g = Math.max(0, Math.min(255, g0 + (Math.random() - 0.5) * 70)) | 0;
+      const b = Math.max(0, Math.min(255, b0 + (Math.random() - 0.5) * 70)) | 0;
+      const alpha = 0.18 + Math.random() * 0.22;
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+      grad.addColorStop(0,   `rgba(${r},${g},${b},${alpha})`);
+      grad.addColorStop(0.5, `rgba(${r},${g},${b},${alpha * 0.3})`);
+      grad.addColorStop(1,   `rgba(${r},${g},${b},0)`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, size, size);
+    }
+
+    // Soft circular falloff so the sprite has no hard edges
+    ctx.globalCompositeOperation = 'destination-in';
+    const fade = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+    fade.addColorStop(0.0, 'rgba(0,0,0,1)');
+    fade.addColorStop(0.6, 'rgba(0,0,0,0.5)');
+    fade.addColorStop(1.0, 'rgba(0,0,0,0)');
+    ctx.fillStyle = fade;
+    ctx.fillRect(0, 0, size, size);
+
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  // 5 nebula sprites at varying distances and sizes
+  for (let i = 0; i < 5; i++) {
+    const rgb  = nebulaPalette[i % nebulaPalette.length];
+    const tex  = makeNebulaTexture(rgb);
+    const mat  = new THREE.SpriteMaterial({
+      map: tex,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false,
+      opacity: 0.55,
+    });
+    const sprite = new THREE.Sprite(mat);
+    const scale = 80 + Math.random() * 60;
+    sprite.scale.set(scale, scale, 1);
+    const a = (i / 5) * Math.PI * 2 + Math.random() * 0.8;
+    const d = 130 + Math.random() * 50;
+    sprite.position.set(
+      Math.cos(a) * d,
+      (Math.random() - 0.5) * 80,
+      Math.sin(a) * d,
+    );
+    group.add(sprite);
   }
 
   return group;
