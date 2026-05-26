@@ -137,6 +137,33 @@ export async function joinRoom(code) {
   return { ok: true, N: d.N, data: d };
 }
 
+// ─── Rejoin room after a page refresh ────────────────────────────────────────
+export async function rejoinRoom(code, player) {
+  code = code.trim().toUpperCase();
+  const r    = ref(db, `rooms/${code}`);
+  const snap = await get(r);
+  if (!snap.exists()) return { ok: false, error: 'Room no longer exists' };
+  const d = snap.val();
+  if (d.gameOver)     return { ok: false, error: 'Game already ended' };
+
+  // Re-mark ourselves as online
+  const myField = player === 1 ? 'hostOnline' : 'guestOnline';
+  await update(r, { [myField]: true });
+
+  roomRef              = r;
+  chatRef              = ref(db, `rooms/${code}/chat`);
+  roomCode             = code;
+  myPlayer             = player;
+  isOnline             = true;
+  localSeq             = d.seq ?? 0;
+  guestSeenOnce        = !!d.guestEverJoined;
+  gameStarted          = !!d.guestEverJoined;
+  opponentLeftNotified = false;
+
+  watchPresence(code);
+  return { ok: true, N: d.N, data: d, guestEverJoined: !!d.guestEverJoined };
+}
+
 // ─── Subscribe to room changes ────────────────────────────────────────────────
 /**
  * onStateChange(remoteData)  — opponent pushed a new move.

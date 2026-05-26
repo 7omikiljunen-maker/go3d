@@ -40,7 +40,7 @@ import { track } from './track.js';
 import { checkPaid, watchPaid } from './payment.js';
 
 import {
-  createRoom, joinRoom, subscribeRoom, pushGameState,
+  createRoom, joinRoom, rejoinRoom, subscribeRoom, pushGameState,
   sendChat, subscribeChat, signalLeave, leaveRoom,
   sendUndoRequest, sendUndoResponse,
   roomCode, myPlayer, isOnline, unflattenBoard,
@@ -174,6 +174,8 @@ function exitOnlineMode() {
   waitingForUndoResponse = false;
   setUndoBtnText('Undo');
   stopIdleMonitor();
+  sessionStorage.removeItem('go3d-online-room');
+  sessionStorage.removeItem('go3d-online-player');
 }
 
 // ─── Idle monitor (online games) ──────────────────────────────────────────────
@@ -602,6 +604,8 @@ async function doCreateGame() {
   displayCode.textContent = code;
   waitingOvl.style.display = 'flex';
   roomCodeText.textContent = code;
+  sessionStorage.setItem('go3d-online-room',   code);
+  sessionStorage.setItem('go3d-online-player', '1');
 
   subscribeRoom(applyOpponentState, () => {
     waitingOvl.style.display = 'none';
@@ -684,6 +688,8 @@ document.getElementById('createGameBtn').onclick = async () => {
 document.getElementById('cancelWaitBtn').onclick = () => {
   leaveRoom();
   waitingOvl.style.display = 'none';
+  sessionStorage.removeItem('go3d-online-room');
+  sessionStorage.removeItem('go3d-online-player');
   setPlayMode('pvc');
   syncModeButtons();
   setupBoard();
@@ -721,6 +727,8 @@ document.getElementById('joinGameBtn').onclick = async () => {
   roomCodeText.textContent = code;
   enterOnlineMode();
   syncModeButtons();
+  sessionStorage.setItem('go3d-online-room',   code);
+  sessionStorage.setItem('go3d-online-player', '2');
 
   subscribeRoom(applyOpponentState, null, handleOpponentLeft, handleUndoRequest, handleUndoResponse);
   subscribeChat(handleNewChatMsg);
@@ -879,6 +887,52 @@ syncSoundBtn();
 const savedDifficulty = localStorage.getItem('go3d-difficulty');
 if (savedDifficulty) setAiDifficulty(savedDifficulty);
 
+// ─── Rejoin interrupted online game after page refresh ───────────────────────
+async function tryRejoinOnlineGame() {
+  const savedRoom   = sessionStorage.getItem('go3d-online-room');
+  const savedPlayer = parseInt(sessionStorage.getItem('go3d-online-player'));
+  if (!savedRoom || !savedPlayer) return false;
+
+  let result;
+  try { result = await rejoinRoom(savedRoom, savedPlayer); }
+  catch (_) { result = { ok: false }; }
+
+  if (!result.ok) {
+    sessionStorage.removeItem('go3d-online-room');
+    sessionStorage.removeItem('go3d-online-player');
+    return false;
+  }
+
+  setN(result.N);
+
+  if (!result.guestEverJoined && savedPlayer === 1) {
+    // Host refreshed while still waiting for opponent — restore waiting screen
+    setupBoard();
+    displayCode.textContent = savedRoom;
+    waitingOvl.style.display = 'flex';
+    roomCodeText.textContent = savedRoom;
+    subscribeRoom(applyOpponentState, () => {
+      waitingOvl.style.display = 'none';
+      enterOnlineMode();
+      syncModeButtons();
+      subscribeChat(handleNewChatMsg);
+      refreshUI(); refreshHints();
+    }, handleOpponentLeft, handleUndoRequest, handleUndoResponse);
+  } else {
+    // Game was in progress — jump straight back in
+    setupBoard();
+    applyOpponentState(result.data);
+    roomCodeText.textContent = savedRoom;
+    enterOnlineMode();
+    syncModeButtons();
+    subscribeRoom(applyOpponentState, null, handleOpponentLeft, handleUndoRequest, handleUndoResponse);
+    subscribeChat(handleNewChatMsg);
+    refreshUI(); refreshHints();
+  }
+
+  return true;
+}
+
 // ─── Start — restore saved game or fresh board ────────────────────────────────
 const hadSave = loadFromStorage();
 if (hadSave) {
@@ -888,3 +942,4 @@ if (hadSave) {
 }
 
 startRenderLoop();
+tryRejoinOnlineGame(); // async — rejoins online game if page was refreshed mid-game
