@@ -67,118 +67,67 @@ export function initRenderer(canvas) {
   scene.add(starfieldGroup);
 }
 
-// ─── Starfield + nebula — procedural, no textures ─────────────────────────────
+// ─── Starfield — procedural, no textures ─────────────────────────────────────
 function buildStarfield() {
   const group = new THREE.Group();
 
-  // 3 layers of stars at different sizes/brightnesses, will twinkle out of phase
+  // Four layers: dim distant stars → big bright foreground stars
+  // The bright layer twinkles, the rest are static for performance.
   const layers = [
-    { count: 500, size: 0.04, baseOpacity: 0.45 },
-    { count: 200, size: 0.06, baseOpacity: 0.70 },
-    { count: 80,  size: 0.09, baseOpacity: 1.00 },
+    { count: 800, size: 0.035, baseOpacity: 0.35, twinkles: false },
+    { count: 350, size: 0.055, baseOpacity: 0.65, twinkles: false },
+    { count: 120, size: 0.08,  baseOpacity: 0.95, twinkles: true  },
+    { count:  35, size: 0.13,  baseOpacity: 1.00, twinkles: true  },
+  ];
+
+  // Mostly white, occasionally tinted blue/yellow/red — like real stars
+  const starColors = [
+    [1.00, 1.00, 1.00],   // white            ×70%
+    [1.00, 1.00, 1.00],
+    [1.00, 1.00, 1.00],
+    [1.00, 1.00, 1.00],
+    [1.00, 1.00, 1.00],
+    [1.00, 1.00, 1.00],
+    [1.00, 1.00, 1.00],
+    [0.75, 0.85, 1.00],   // blue-white       ×10%
+    [1.00, 0.95, 0.78],   // yellow-white     ×10%
+    [1.00, 0.78, 0.65],   // amber-red        ×10%
   ];
 
   for (const cfg of layers) {
     const positions = new Float32Array(cfg.count * 3);
+    const colors    = new Float32Array(cfg.count * 3);
     for (let i = 0; i < cfg.count; i++) {
       // Distribute on a sphere far behind the board
-      const radius = 70 + Math.random() * 40;
+      const radius = 80 + Math.random() * 50;
       const theta  = Math.random() * Math.PI * 2;
       const phi    = Math.acos(2 * Math.random() - 1);
       positions[i*3]   = radius * Math.sin(phi) * Math.cos(theta);
       positions[i*3+1] = radius * Math.sin(phi) * Math.sin(theta);
       positions[i*3+2] = radius * Math.cos(phi);
+
+      const c = starColors[Math.floor(Math.random() * starColors.length)];
+      colors[i*3]   = c[0];
+      colors[i*3+1] = c[1];
+      colors[i*3+2] = c[2];
     }
     const geom = new THREE.BufferGeometry();
     geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geom.setAttribute('color',    new THREE.BufferAttribute(colors,    3));
 
     const mat = new THREE.PointsMaterial({
-      color: 0xffffff,
       size: cfg.size,
       opacity: cfg.baseOpacity,
       transparent: true,
       depthWrite: false,
-      fog: false,           // stars don't fade with fog
+      fog: false,
+      vertexColors: true,
     });
     mat.userData.baseOpacity  = cfg.baseOpacity;
     mat.userData.twinklePhase = Math.random() * Math.PI * 2;
+    mat.userData.twinkles     = cfg.twinkles;
 
     group.add(new THREE.Points(geom, mat));
-  }
-
-  // Nebula clouds — soft glowing sprites with procedural radial-gradient textures.
-  // Sprites always face the camera so they read as hazy gas clouds, not 3D balls.
-  const nebulaPalette = [
-    [110,  40, 180],   // purple
-    [ 40,  70, 200],   // blue
-    [170,  40, 130],   // magenta
-    [ 60, 120, 200],   // teal-blue
-  ];
-
-  function makeNebulaTexture(rgb) {
-    const size = 256;
-    const cv = document.createElement('canvas');
-    cv.width = cv.height = size;
-    const ctx = cv.getContext('2d');
-
-    // Layer ~15 overlapping coloured blobs with additive compositing → patchy cloud
-    ctx.globalCompositeOperation = 'lighter';
-    const [r0, g0, b0] = rgb;
-    for (let i = 0; i < 15; i++) {
-      const cx = size/2 + (Math.random() - 0.5) * size * 0.7;
-      const cy = size/2 + (Math.random() - 0.5) * size * 0.7;
-      const rad = size * (0.08 + Math.random() * 0.28);
-      // ±35-point hue shift per blob so the cloud has colour variation
-      const r = Math.max(0, Math.min(255, r0 + (Math.random() - 0.5) * 70)) | 0;
-      const g = Math.max(0, Math.min(255, g0 + (Math.random() - 0.5) * 70)) | 0;
-      const b = Math.max(0, Math.min(255, b0 + (Math.random() - 0.5) * 70)) | 0;
-      const alpha = 0.18 + Math.random() * 0.22;
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
-      grad.addColorStop(0,   `rgba(${r},${g},${b},${alpha})`);
-      grad.addColorStop(0.5, `rgba(${r},${g},${b},${alpha * 0.3})`);
-      grad.addColorStop(1,   `rgba(${r},${g},${b},0)`);
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, size, size);
-    }
-
-    // Mask the whole texture with a soft circular falloff so the sprite has no
-    // hard edges and blends smoothly into the surrounding black.
-    ctx.globalCompositeOperation = 'destination-in';
-    const fade = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
-    fade.addColorStop(0.0, 'rgba(0,0,0,1)');
-    fade.addColorStop(0.6, 'rgba(0,0,0,0.5)');
-    fade.addColorStop(1.0, 'rgba(0,0,0,0)');
-    ctx.fillStyle = fade;
-    ctx.fillRect(0, 0, size, size);
-
-    const tex = new THREE.CanvasTexture(cv);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-  }
-
-  // 5 nebula sprites at varying distances and sizes
-  for (let i = 0; i < 5; i++) {
-    const rgb  = nebulaPalette[i % nebulaPalette.length];
-    const tex  = makeNebulaTexture(rgb);
-    const mat  = new THREE.SpriteMaterial({
-      map: tex,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      fog: false,
-      opacity: 0.45,
-    });
-    const sprite = new THREE.Sprite(mat);
-    const scale = 80 + Math.random() * 60;
-    sprite.scale.set(scale, scale, 1);
-    const a = (i / 5) * Math.PI * 2 + Math.random() * 0.8;
-    const d = 130 + Math.random() * 50;
-    sprite.position.set(
-      Math.cos(a) * d,
-      (Math.random() - 0.5) * 80,
-      Math.sin(a) * d,
-    );
-    group.add(sprite);
   }
 
   return group;
@@ -413,16 +362,16 @@ export function startRenderLoop() {
       }
     }
 
-    // Slow starfield twinkle — each layer phases independently
+    // Slow starfield twinkle — only the bright foreground layers shimmer
     if (starfieldGroup && starfieldGroup.visible) {
       const t = clock.elapsedTime;
       for (const child of starfieldGroup.children) {
-        if (child.isPoints) {
+        if (child.isPoints && child.material.userData.twinkles) {
           const mat   = child.material;
           const base  = mat.userData.baseOpacity ?? mat.opacity;
           const phase = mat.userData.twinklePhase ?? 0;
-          // Modulate ±20% slowly (0.15 Hz ≈ 6.7 s per cycle)
-          mat.opacity = base * (0.8 + 0.2 * Math.sin(t * 0.9 + phase));
+          // Subtle ±15% modulation over ~7 s
+          mat.opacity = base * (0.85 + 0.15 * Math.sin(t * 0.9 + phase));
         }
       }
     }
