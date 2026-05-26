@@ -871,8 +871,7 @@ installBanner.querySelector('#installBannerDismiss').onclick = () => {
 };
 
 // Restore saved theme (or respect OS preference as default)
-const savedTheme = localStorage.getItem('go3d-theme') ||
-  (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+const savedTheme = localStorage.getItem('go3d-theme') || 'dark';
 applyTheme(savedTheme);
 syncSoundBtn();
 
