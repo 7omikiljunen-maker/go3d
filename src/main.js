@@ -919,12 +919,13 @@ async function tryRejoinOnlineGame() {
       refreshUI(); refreshHints();
     }, handleOpponentLeft, handleUndoRequest, handleUndoResponse);
   } else {
-    // Game was in progress — jump straight back in
-    setupBoard();
-    applyOpponentState(result.data);
+    // Game was in progress — enter online mode FIRST so CSS is correct
+    // before setupBoard/applyOpponentState call refreshUI internally
     roomCodeText.textContent = savedRoom;
     enterOnlineMode();
     syncModeButtons();
+    setupBoard();
+    applyOpponentState(result.data);
     subscribeRoom(applyOpponentState, null, handleOpponentLeft, handleUndoRequest, handleUndoResponse);
     subscribeChat(handleNewChatMsg);
     refreshUI(); refreshHints();
@@ -933,13 +934,16 @@ async function tryRejoinOnlineGame() {
   return true;
 }
 
-// ─── Start — restore saved game or fresh board ────────────────────────────────
-const hadSave = loadFromStorage();
-if (hadSave) {
-  restoreFromSave();
-} else {
-  setupBoard();
-}
-
+// ─── Start — show blank board immediately, then async: rejoin online game or
+//             restore local saved game ─────────────────────────────────────────
+setupBoard();
 startRenderLoop();
-tryRejoinOnlineGame(); // async — rejoins online game if page was refreshed mid-game
+
+(async () => {
+  const rejoined = await tryRejoinOnlineGame();
+  if (!rejoined) {
+    // No online session — restore saved local game if one exists
+    const hadSave = loadFromStorage();
+    if (hadSave) restoreFromSave();
+  }
+})();
