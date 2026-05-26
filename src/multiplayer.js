@@ -19,8 +19,11 @@ let localSeq             = 0;
 let guestSeenOnce        = false;
 let gameStarted          = false;
 let opponentLeftNotified = false;
+let opponentLeftTimer    = null; // grace-period timer before declaring opponent left
 let lastSeenUndoReq      = 0;   // last undoReq.seq handled as the responder
 let pendingMyUndoSeq     = 0;   // seq of our outgoing request (0 = none)
+
+const OPPONENT_LEFT_GRACE_MS = 30 * 1000; // wait 30 s before declaring opponent gone
 
 // Re-mark our online flag every time Firebase reconnects.
 // Without this, Firebase drops the connection after a few idle minutes,
@@ -156,19 +159,28 @@ export function subscribeRoom(onStateChange, onOpponentJoined, onOpponentLeft,
       onOpponentJoined();
     }
 
-    // Host: guest left — use guestEverJoined (survives batched updates)
-    // Pass gameStarted so the handler knows if the game had actually begun
-    if (myPlayer === 1 && d.guestEverJoined && !d.guestOnline
-        && !opponentLeftNotified && onOpponentLeft) {
-      opponentLeftNotified = true;
-      onOpponentLeft(gameStarted);
-    }
+    // Detect opponent offline (host watches guest; guest watches host)
+    const opponentOnline =
+      myPlayer === 1 ? d.guestOnline
+                     : d.hostOnline !== false;
+    const opponentEverJoined =
+      myPlayer === 1 ? !!d.guestEverJoined
+                     : true; // host was already there when guest joined
 
-    // Guest: host left
-    if (myPlayer === 2 && d.hostOnline === false
-        && !opponentLeftNotified && onOpponentLeft) {
-      opponentLeftNotified = true;
-      onOpponentLeft(true);
+    if (!opponentOnline && opponentEverJoined && !opponentLeftNotified && onOpponentLeft) {
+      // Don't fire immediately — opponent may just have a momentary
+      // Firebase reconnect blip. Wait OPPONENT_LEFT_GRACE_MS before declaring them gone.
+      if (!opponentLeftTimer) {
+        opponentLeftTimer = setTimeout(() => {
+          opponentLeftTimer    = null;
+          opponentLeftNotified = true;
+          onOpponentLeft(gameStarted || myPlayer === 2);
+        }, OPPONENT_LEFT_GRACE_MS);
+      }
+    } else if (opponentOnline && opponentLeftTimer) {
+      // Opponent came back before grace period expired — cancel
+      clearTimeout(opponentLeftTimer);
+      opponentLeftTimer = null;
     }
 
     // Apply state if it came from the other player
@@ -257,9 +269,10 @@ export function subscribeChat(onNewMessage) {
 
 // ─── Leave room ───────────────────────────────────────────────────────────────
 export function leaveRoom() {
-  if (unsubRoom)      { unsubRoom(); unsubRoom = null; }
-  if (unsubChat)      { unsubChat(); unsubChat = null; }
-  if (unsubConnected) { unsubConnected(); unsubConnected = null; }
+  if (unsubRoom)         { unsubRoom(); unsubRoom = null; }
+  if (unsubChat)         { unsubChat(); unsubChat = null; }
+  if (unsubConnected)    { unsubConnected(); unsubConnected = null; }
+  if (opponentLeftTimer) { clearTimeout(opponentLeftTimer); opponentLeftTimer = null; }
   roomRef              = null;
   chatRef              = null;
   roomCode             = null;
