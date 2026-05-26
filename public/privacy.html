@@ -45,7 +45,8 @@
   <ul>
     <li><b>Google account information</b> — your name, email address, and profile picture, only if you sign in with Google to create an online game.</li>
     <li><b>Payment information</b> — when you pay €1 to unlock game creation, your payment is processed by Stripe. We do not store your card details. We receive only a confirmation that payment succeeded, linked to your account ID.</li>
-    <li><b>Game data</b> — board states and chat messages from online games you create or join. This is stored in Firebase Realtime Database while the game is active.</li>
+    <li><b>Game data</b> — board states from online games you create or join, stored in Firebase Realtime Database only while the game is active and auto-deleted within 24 hours of the last move.</li>
+    <li><b>Chat messages</b> — when you send a chat message during an online game, it is briefly relayed through Firebase to your opponent so they can receive it in real time. <b>We do not read, log, or analyse chat content.</b> Only the last two messages are kept visible during the game; older messages are discarded from the screen. All chat is removed when the room is cleaned up (within 24 hours of inactivity).</li>
     <li><b>Usage analytics</b> — anonymous events such as page views, button clicks, payments, and games completed, via Firebase Analytics. These do not personally identify you.</li>
     <li><b>Technical data</b> — your browser type, operating system, country (from IP address), and similar non-identifying technical information.</li>
   </ul>
