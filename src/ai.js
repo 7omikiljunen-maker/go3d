@@ -1,5 +1,5 @@
 // ─── ai.js — Minimax AI with alpha-beta pruning ───────────────────────────────
-import { N, board, legalMoves } from './board.js';
+import { N, board, legalMoves, aiDifficulty } from './board.js';
 
 // ─── Self-contained board helpers (work on explicit board copies) ─────────────
 function simNeighbors(x, y, z) {
@@ -346,15 +346,37 @@ export function aiMove(player) {
   const moves = legalMoves(player);
   if (moves.length === 0) return null;
 
+  // Easy: 40 % of moves are completely random — makes the AI feel genuinely weak
+  if (aiDifficulty === 'easy' && Math.random() < 0.4) {
+    return moves[Math.floor(Math.random() * moves.length)];
+  }
+
   const phase = getPhase();
 
-  // Depth and candidate limits tuned per board size to stay responsive
-  //   depth     = how many half-moves to look ahead
-  //   rootCands = how many moves to consider at the root
-  //   deepCands = how many moves to consider at each deeper level
-  const depth     = N <= 3 ? 4 : N <= 5 ? 3 : 2;
-  const rootCands = N <= 3 ? 20 : N <= 5 ? 15 : N <= 7 ? 10 : 6;
-  const deepCands = N <= 3 ? 12 : N <= 5 ? 8  : N <= 7 ? 5  : 4;
+  // Depth and candidate limits tuned per difficulty × board size
+  //   depth     = how many half-moves ahead
+  //   rootCands = moves considered at root
+  //   deepCands = moves considered at each deeper level
+  //   noise     = random tie-break jitter added to scores
+  const depth = aiDifficulty === 'hard'
+    ? (N <= 3 ? 4 : N <= 5 ? 4 : N <= 7 ? 3 : 2)
+    : aiDifficulty === 'easy'
+    ? 1
+    : (N <= 3 ? 4 : N <= 5 ? 3 : 2);                          // medium
+
+  const rootCands = aiDifficulty === 'hard'
+    ? (N <= 3 ? 25 : N <= 5 ? 20 : N <= 7 ? 14 : 8)
+    : aiDifficulty === 'easy'
+    ? 5
+    : (N <= 3 ? 20 : N <= 5 ? 15 : N <= 7 ? 10 : 6);          // medium
+
+  const deepCands = aiDifficulty === 'hard'
+    ? (N <= 3 ? 15 : N <= 5 ? 10 : N <= 7 ? 7 : 5)
+    : aiDifficulty === 'easy'
+    ? 3
+    : (N <= 3 ? 12 : N <= 5 ? 8  : N <= 7 ? 5 : 4);           // medium
+
+  const noise = aiDifficulty === 'hard' ? 0 : aiDifficulty === 'easy' ? 50 : 5;
 
   // ── Pass evaluation ──────────────────────────────────────────────────────────
   // Score of PASSING = run a shallow search where the opponent moves first.
@@ -380,7 +402,7 @@ export function aiMove(player) {
 
     // Search from opponent's perspective one level down
     const s = minimax(result.b, depth - 1, -Infinity, Infinity, false, player, phase, deepCands);
-    const noisy = s + Math.random() * 5; // tiny noise to break ties naturally
+    const noisy = s + Math.random() * noise;
 
     if (noisy > bestNoisyScore) {
       bestNoisyScore = noisy;

@@ -198,8 +198,9 @@
 
     /* Online mode — dim/lock controls inside settings, show room code */
     #app.online-mode #sizeButtons button,
-    #app.online-mode #modeButtons   { pointer-events: none; opacity: 0.35; }
-    #app.online-mode #scoringBtn    { pointer-events: none; opacity: 0.35; }
+    #app.online-mode #modeButtons,
+    #app.online-mode #difficultyButtons { pointer-events: none; opacity: 0.35; }
+    #app.online-mode #scoringBtn        { pointer-events: none; opacity: 0.35; }
     #app.online-mode #onlineBtn     { display: none; }
     #app.online-mode #roomCodeDisplay { display: flex !important;
       flex-direction: column; align-items: flex-end; gap: 2px; }
@@ -756,6 +757,16 @@
           </div>
         </div>
 
+        <!-- AI Difficulty -->
+        <div class="settings-section">
+          <div class="settings-section-label">AI DIFFICULTY</div>
+          <div class="btn-group" id="difficultyButtons">
+            <button class="ctrl-btn" data-difficulty="easy">Easy</button>
+            <button class="ctrl-btn active" data-difficulty="medium">Medium</button>
+            <button class="ctrl-btn" data-difficulty="hard">Hard</button>
+          </div>
+        </div>
+
         <!-- Online — full-width prominent button -->
         <div class="settings-section">
           <button id="onlineBtn">🌐 Play Online →</button>
@@ -826,8 +837,15 @@
            <b>CvC</b> — watch the computer play itself.<br>
            <b>🌐 Online</b> — play against a friend on another device.</p>
 
+        <h3>AI Difficulty</h3>
+        <p>In PvC and CvC modes you can choose how strong the computer plays:<br><br>
+           <b>Easy</b> — plays randomly quite often, very beatable for beginners.<br>
+           <b>Medium</b> — balanced default, thinks a few moves ahead.<br>
+           <b>Hard</b> — searches deeper and picks the best move it finds, no randomness.<br><br>
+           Change it any time in <b>⚙️ Settings → AI DIFFICULTY</b>.</p>
+
         <h3>Settings ⚙️</h3>
-        <p>Tap <b>⚙️</b> to change board size (3×3×3 up to 9×9×9), game mode, scoring method, sound, and colour theme.</p>
+        <p>Tap <b>⚙️</b> to change board size (3×3×3 up to 9×9×9), game mode, AI difficulty, scoring method, sound, and colour theme.</p>
 
         <h3>Install as an app</h3>
         <p>Tap <b>⬇ Install</b> in ⚙️ Settings (or the install banner at the bottom of the screen) to add Go 3D to your home screen or desktop. Once installed, you can play single-player modes (PvP, PvC, CvC) <b>offline</b> — no internet needed. Online games still require a connection.</p>

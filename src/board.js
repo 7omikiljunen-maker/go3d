@@ -2,15 +2,17 @@
 
 export let N = 5;
 export let board, current, captures, consecutivePasses, gameOver, koState, lastPlaced, layerVisible;
-export let scoringMode = 'both';
-export let playMode   = 'pvc';
-export let komi       = 6.5;
-export let history    = [];   // undo stack
+export let scoringMode  = 'both';
+export let playMode     = 'pvc';
+export let komi         = 6.5;
+export let aiDifficulty = 'medium'; // 'easy' | 'medium' | 'hard'
+export let history      = [];   // undo stack
 
-export function setN(n)           { N = n; }
-export function setScoringMode(m) { scoringMode = m; }
-export function setPlayMode(m)    { playMode = m; }
-export function setKomi(k)        { komi = k; }
+export function setN(n)              { N = n; }
+export function setScoringMode(m)    { scoringMode = m; }
+export function setPlayMode(m)       { playMode = m; }
+export function setKomi(k)           { komi = k; }
+export function setAiDifficulty(d)   { aiDifficulty = d; }
 
 // ─── Board config per size ───────────────────────────────────────────────────
 export function cfg(n) {

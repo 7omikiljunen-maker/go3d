@@ -3,6 +3,7 @@ import {
   N, setN, board, current, captures, consecutivePasses, gameOver,
   koState, lastPlaced, layerVisible,
   scoringMode, playMode, setPlayMode,
+  aiDifficulty, setAiDifficulty,
   komi,
   history,
   initBoard, placeStone, doPass, setGameOver, setLayerVisible,
@@ -148,6 +149,12 @@ function syncModeButtons() {
     b.classList.toggle('active', b.dataset.mode === playMode)
   );
   document.getElementById('onlineBtn').classList.toggle('active', isOnline);
+}
+
+function syncDifficultyButtons() {
+  document.querySelectorAll('#difficultyButtons button').forEach(b =>
+    b.classList.toggle('active', b.dataset.difficulty === aiDifficulty)
+  );
 }
 
 // ─── Online mode UI helpers ───────────────────────────────────────────────────
@@ -405,6 +412,7 @@ function setupBoard() {
   buildLayerButtons(handleLayerToggle);
   syncSizeButtons();
   syncModeButtons();
+  syncDifficultyButtons();
   syncScoringBtn();
   refreshUI(); refreshHints();
   hideOverlay();
@@ -421,6 +429,7 @@ function restoreFromSave() {
   rebuildStoneMeshes(lastPlaced);
   syncSizeButtons();
   syncModeButtons();
+  syncDifficultyButtons();
   syncScoringBtn();
   refreshUI(); refreshHints();
   hideOverlay();
@@ -521,6 +530,15 @@ document.querySelectorAll('#modeButtons button[data-mode]').forEach(btn => {
     setPlayMode(btn.dataset.mode);
     syncModeButtons();
     setupBoard();
+  };
+});
+
+document.querySelectorAll('#difficultyButtons button').forEach(btn => {
+  btn.onclick = () => {
+    if (isOnline) return;
+    setAiDifficulty(btn.dataset.difficulty);
+    localStorage.setItem('go3d-difficulty', btn.dataset.difficulty);
+    syncDifficultyButtons();
   };
 });
 
@@ -857,6 +875,10 @@ const savedTheme = localStorage.getItem('go3d-theme') ||
   (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
 applyTheme(savedTheme);
 syncSoundBtn();
+
+// Restore saved AI difficulty
+const savedDifficulty = localStorage.getItem('go3d-difficulty');
+if (savedDifficulty) setAiDifficulty(savedDifficulty);
 
 // ─── Start — restore saved game or fresh board ────────────────────────────────
 const hadSave = loadFromStorage();
