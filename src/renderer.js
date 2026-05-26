@@ -45,7 +45,7 @@ export function initRenderer(canvas) {
   scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x1a1a2e, 0.032);
 
-  camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
+  camera = new THREE.PerspectiveCamera(42, 1, 0.1, 400);
   camera.lookAt(0, 0, 0);
 
   scene.add(new THREE.AmbientLight(0x8888cc, 0.5));
@@ -106,14 +106,14 @@ function buildStarfield() {
     group.add(new THREE.Points(geom, mat));
   }
 
-  // Nebula clouds — large soft spheres with additive blending give a gas-cloud look
+  // Nebula clouds — large but far away, very faint additive glow
   const nebulaColors = [0x5a2a99, 0x2244aa, 0x882277];
   for (let i = 0; i < 3; i++) {
-    const r = 18 + Math.random() * 12;
+    const r = 40 + Math.random() * 30;
     const geom = new THREE.SphereGeometry(r, 16, 16);
     const mat  = new THREE.MeshBasicMaterial({
       color: nebulaColors[i],
-      opacity: 0.05,
+      opacity: 0.025,
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
@@ -122,8 +122,8 @@ function buildStarfield() {
     });
     const cloud = new THREE.Mesh(geom, mat);
     const a = (i / 3) * Math.PI * 2 + Math.random();
-    const d = 45 + Math.random() * 15;
-    cloud.position.set(Math.cos(a) * d, (Math.random() - 0.5) * 25, Math.sin(a) * d);
+    const d = 160 + Math.random() * 40;       // pushed far out
+    cloud.position.set(Math.cos(a) * d, (Math.random() - 0.5) * 60, Math.sin(a) * d);
     group.add(cloud);
   }
 
