@@ -347,7 +347,6 @@ function minimax(brd, depth, alpha, beta, isMaximizing, aiPlayer, phase, candLim
 // heuristic (_qs) for move ordering.  All boards are flat Int8Arrays so copies
 // are essentially a single memcpy — much cheaper than nested JS arrays.
 
-const _MC_MS = 2000;   // think time per move (ms)
 const _MC_C  = 1.41;   // UCB1 exploration constant (≈ √2)
 const _MC_RD = 25;     // max moves per rollout
 const _MC_K  = 10;     // expansion candidates per node
@@ -490,7 +489,8 @@ function mctsMove(player) {
   const root = _node(flat, player, null, null);
   root.untried = _topK(flat, player, _MC_K);
 
-  const deadline = Date.now() + _MC_MS;
+  const thinkMs  = N <= 3 ? 1500 : N <= 5 ? 2000 : 3000; // scales with board size
+  const deadline = Date.now() + thinkMs;
 
   while (Date.now() < deadline) {
     // 1. Select
