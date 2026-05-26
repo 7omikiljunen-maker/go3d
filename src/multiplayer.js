@@ -23,7 +23,7 @@ let opponentLeftTimer    = null; // grace-period timer before declaring opponent
 let lastSeenUndoReq      = 0;   // last undoReq.seq handled as the responder
 let pendingMyUndoSeq     = 0;   // seq of our outgoing request (0 = none)
 
-const OPPONENT_LEFT_GRACE_MS = 30 * 1000; // wait 30 s before declaring opponent gone
+const OPPONENT_LEFT_GRACE_MS = 5 * 60 * 1000; // wait 5 min — tolerates mobile screen sleep
 
 // Re-mark our online flag every time Firebase reconnects.
 // Without this, Firebase drops the connection after a few idle minutes,
