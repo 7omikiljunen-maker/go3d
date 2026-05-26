@@ -120,14 +120,37 @@ function buildStarfield() {
     const cv = document.createElement('canvas');
     cv.width = cv.height = size;
     const ctx = cv.getContext('2d');
-    const grad = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
-    const [r,g,b] = rgb;
-    grad.addColorStop(0.0, `rgba(${r},${g},${b},0.55)`);
-    grad.addColorStop(0.3, `rgba(${r},${g},${b},0.18)`);
-    grad.addColorStop(0.6, `rgba(${r},${g},${b},0.04)`);
-    grad.addColorStop(1.0, `rgba(${r},${g},${b},0)`);
-    ctx.fillStyle = grad;
+
+    // Layer ~15 overlapping coloured blobs with additive compositing → patchy cloud
+    ctx.globalCompositeOperation = 'lighter';
+    const [r0, g0, b0] = rgb;
+    for (let i = 0; i < 15; i++) {
+      const cx = size/2 + (Math.random() - 0.5) * size * 0.7;
+      const cy = size/2 + (Math.random() - 0.5) * size * 0.7;
+      const rad = size * (0.08 + Math.random() * 0.28);
+      // ±35-point hue shift per blob so the cloud has colour variation
+      const r = Math.max(0, Math.min(255, r0 + (Math.random() - 0.5) * 70)) | 0;
+      const g = Math.max(0, Math.min(255, g0 + (Math.random() - 0.5) * 70)) | 0;
+      const b = Math.max(0, Math.min(255, b0 + (Math.random() - 0.5) * 70)) | 0;
+      const alpha = 0.18 + Math.random() * 0.22;
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+      grad.addColorStop(0,   `rgba(${r},${g},${b},${alpha})`);
+      grad.addColorStop(0.5, `rgba(${r},${g},${b},${alpha * 0.3})`);
+      grad.addColorStop(1,   `rgba(${r},${g},${b},0)`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, size, size);
+    }
+
+    // Mask the whole texture with a soft circular falloff so the sprite has no
+    // hard edges and blends smoothly into the surrounding black.
+    ctx.globalCompositeOperation = 'destination-in';
+    const fade = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+    fade.addColorStop(0.0, 'rgba(0,0,0,1)');
+    fade.addColorStop(0.6, 'rgba(0,0,0,0.5)');
+    fade.addColorStop(1.0, 'rgba(0,0,0,0)');
+    ctx.fillStyle = fade;
     ctx.fillRect(0, 0, size, size);
+
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
