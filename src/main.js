@@ -153,6 +153,7 @@ function syncModeButtons() {
 function enterOnlineMode() {
   app.classList.add('online-mode');
   resetBtn.textContent = 'Leave';
+  startIdleMonitor();
 }
 
 function exitOnlineMode() {
@@ -164,6 +165,53 @@ function exitOnlineMode() {
   chatMessages.innerHTML = '';
   waitingForUndoResponse = false;
   setUndoBtnText('Undo');
+  stopIdleMonitor();
+}
+
+// ─── Idle monitor (online games) ──────────────────────────────────────────────
+//   - Soft notice when opponent has been silent for 15 min
+//   - Auto-end game if 24 h pass with no moves
+const IDLE_NOTICE_MS  = 15 * 60 * 1000;
+const IDLE_TIMEOUT_MS = 24 * 60 * 60 * 1000;
+let remoteLastMoveAt = 0;
+let idleInterval     = null;
+const idleBanner     = document.getElementById('idle-banner');
+
+function updateLastMoveAt(ts) {
+  if (typeof ts === 'number' && ts > remoteLastMoveAt) remoteLastMoveAt = ts;
+  idleBanner.classList.remove('show');   // any update means activity — hide notice
+}
+
+function startIdleMonitor() {
+  remoteLastMoveAt = Date.now();
+  idleBanner.classList.remove('show');
+  if (idleInterval) clearInterval(idleInterval);
+  idleInterval = setInterval(() => {
+    if (!isOnline || gameOver) return;
+    const elapsed = Date.now() - remoteLastMoveAt;
+
+    // 24 h timeout — auto-end game
+    if (elapsed > IDLE_TIMEOUT_MS) {
+      stopIdleMonitor();
+      setGameOver(true);
+      alert('Game ended: no moves for 24 hours.');
+      handleOpponentLeft(true);
+      return;
+    }
+
+    // 15-min soft notice — only when waiting for opponent
+    const waitingForOpponent = current !== myPlayer;
+    if (waitingForOpponent && elapsed > IDLE_NOTICE_MS) {
+      idleBanner.classList.add('show');
+    } else {
+      idleBanner.classList.remove('show');
+    }
+  }, 30 * 1000);   // check every 30 s
+}
+
+function stopIdleMonitor() {
+  if (idleInterval) { clearInterval(idleInterval); idleInterval = null; }
+  idleBanner.classList.remove('show');
 }
 
 // ─── Place stone ─────────────────────────────────────────────────────────────
@@ -182,6 +230,7 @@ async function tryPlace(x, y, z) {
 
   // Push to Firebase after a successful local move
   if (isOnline) {
+    updateLastMoveAt(Date.now());   // reset idle timer locally
     await pushGameState({ board, N, current, captures, consecutivePasses, gameOver, koState, lastPlaced });
   }
   return true;
@@ -242,6 +291,9 @@ function applyOpponentState(remoteData) {
       setTimeout(() => playCaptureSound(opponentCaptured), 80);
     }
   }
+
+  // Update idle monitor with the freshest move timestamp from the room
+  if (remoteData.lastMoveAt) updateLastMoveAt(remoteData.lastMoveAt);
 
   if (remoteData.gameOver) endGame();
 }
@@ -393,6 +445,7 @@ document.getElementById('passBtn').onclick = async () => {
     if (current !== myPlayer) return;
     const over = doPass();
     if (over) setGameOver(true); // set BEFORE pushing so remote sees gameOver:true
+    updateLastMoveAt(Date.now());
     await pushGameState({ board, N, current, captures, consecutivePasses, gameOver, koState, lastPlaced });
     if (over) { endGame(); return; }
     refreshUI(); refreshHints();

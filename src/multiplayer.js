@@ -90,6 +90,7 @@ export async function createRoom(n, board) {
     lastX:             null,
     lastY:             null,
     lastZ:             null,
+    lastMoveAt:        Date.now(),    // for idle detection
   });
 
   roomCode             = code;
@@ -228,6 +229,7 @@ export async function pushGameState({ board, N: n, current, captures,
     lastX:             lastPlaced?.x ?? null,
     lastY:             lastPlaced?.y ?? null,
     lastZ:             lastPlaced?.z ?? null,
+    lastMoveAt:        Date.now(),
   });
 }
 
