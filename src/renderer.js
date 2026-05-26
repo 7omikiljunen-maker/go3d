@@ -106,25 +106,56 @@ function buildStarfield() {
     group.add(new THREE.Points(geom, mat));
   }
 
-  // Nebula clouds — large but far away, very faint additive glow
-  const nebulaColors = [0x5a2a99, 0x2244aa, 0x882277];
-  for (let i = 0; i < 3; i++) {
-    const r = 40 + Math.random() * 30;
-    const geom = new THREE.SphereGeometry(r, 16, 16);
-    const mat  = new THREE.MeshBasicMaterial({
-      color: nebulaColors[i],
-      opacity: 0.025,
+  // Nebula clouds — soft glowing sprites with procedural radial-gradient textures.
+  // Sprites always face the camera so they read as hazy gas clouds, not 3D balls.
+  const nebulaPalette = [
+    [110,  40, 180],   // purple
+    [ 40,  70, 200],   // blue
+    [170,  40, 130],   // magenta
+    [ 60, 120, 200],   // teal-blue
+  ];
+
+  function makeNebulaTexture(rgb) {
+    const size = 256;
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    const ctx = cv.getContext('2d');
+    const grad = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+    const [r,g,b] = rgb;
+    grad.addColorStop(0.0, `rgba(${r},${g},${b},0.55)`);
+    grad.addColorStop(0.3, `rgba(${r},${g},${b},0.18)`);
+    grad.addColorStop(0.6, `rgba(${r},${g},${b},0.04)`);
+    grad.addColorStop(1.0, `rgba(${r},${g},${b},0)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  // 5 nebula sprites at varying distances and sizes
+  for (let i = 0; i < 5; i++) {
+    const rgb  = nebulaPalette[i % nebulaPalette.length];
+    const tex  = makeNebulaTexture(rgb);
+    const mat  = new THREE.SpriteMaterial({
+      map: tex,
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
-      side: THREE.BackSide,
       fog: false,
+      opacity: 0.45,
     });
-    const cloud = new THREE.Mesh(geom, mat);
-    const a = (i / 3) * Math.PI * 2 + Math.random();
-    const d = 160 + Math.random() * 40;       // pushed far out
-    cloud.position.set(Math.cos(a) * d, (Math.random() - 0.5) * 60, Math.sin(a) * d);
-    group.add(cloud);
+    const sprite = new THREE.Sprite(mat);
+    const scale = 80 + Math.random() * 60;
+    sprite.scale.set(scale, scale, 1);
+    const a = (i / 5) * Math.PI * 2 + Math.random() * 0.8;
+    const d = 130 + Math.random() * 50;
+    sprite.position.set(
+      Math.cos(a) * d,
+      (Math.random() - 0.5) * 80,
+      Math.sin(a) * d,
+    );
+    group.add(sprite);
   }
 
   return group;
