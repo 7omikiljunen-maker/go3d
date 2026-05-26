@@ -527,8 +527,9 @@ export function aiMove(player) {
   const moves = legalMoves(player);
   if (moves.length === 0) return null;
 
-  // Hard: use MCTS — much stronger on large boards, scales with time not depth
-  if (aiDifficulty === 'hard') return mctsMove(player);
+  // Hard: MCTS on small boards (enough iterations to be strong),
+  //       minimax on large boards (too few MCTS iterations to beat a good eval function)
+  if (aiDifficulty === 'hard' && N <= 5) return mctsMove(player);
 
   // Easy: 40 % of moves are completely random — makes the AI feel genuinely weak
   if (aiDifficulty === 'easy' && Math.random() < 0.4) {
