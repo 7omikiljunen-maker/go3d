@@ -306,6 +306,7 @@ function applyOpponentState(remoteData) {
   if (remoteData.lastMoveAt) updateLastMoveAt(remoteData.lastMoveAt);
 
   if (remoteData.gameOver) endGame();
+  else hideOverlay(); // in case opponent's undo reversed a game-over on this side
 }
 
 // ─── Undo ─────────────────────────────────────────────────────────────────────
