@@ -13,7 +13,7 @@ import {
 } from './board.js';
 
 import { aiMove } from './ai.js';
-import { playStoneSound, soundEnabled, setSoundEnabled } from './audio.js';
+import { playStoneSound, playCaptureSound, soundEnabled, setSoundEnabled } from './audio.js';
 
 import {
   initRenderer, resizeRenderer, startRenderLoop,
@@ -171,7 +171,11 @@ async function tryPlace(x, y, z) {
   const result = placeStone(x, y, z);
   if (!result.ok) return false;
   playStoneSound();
-  if (result.captured.length) removeStonesMesh(result.captured);
+  if (result.captured.length) {
+    removeStonesMesh(result.captured);
+    // Slight delay so the placement clack lands first, then captures clatter
+    setTimeout(() => playCaptureSound(result.captured.length), 80);
+  }
   addStoneMesh(x, y, z, result.color);
   if (!isOnline) saveToStorage();
   refreshUI(); refreshHints();
@@ -203,6 +207,18 @@ function applyOpponentState(remoteData) {
   try { newBoard = unflattenBoard(JSON.parse(remoteData.board), n); }
   catch (_) { return; }
 
+  // Snapshot pre-state so we can detect what changed
+  const prevTotalCaptures = (captures[0] ?? 0) + (captures[1] ?? 0);
+  const prevLast          = lastPlaced
+    ? `${lastPlaced.x},${lastPlaced.y},${lastPlaced.z}`
+    : '';
+  const newLast           = (remoteData.lastX !== null && remoteData.lastX !== undefined)
+    ? `${remoteData.lastX},${remoteData.lastY},${remoteData.lastZ}`
+    : '';
+  const newTotalCaptures  = (remoteData.capturesBlack ?? 0) + (remoteData.capturesWhite ?? 0);
+  const opponentCaptured  = Math.max(0, newTotalCaptures - prevTotalCaptures);
+  const isNewMove         = newLast !== '' && newLast !== prevLast;
+
   applyRemoteState({
     board:             newBoard,
     current:           remoteData.current,
@@ -218,6 +234,15 @@ function applyOpponentState(remoteData) {
   rebuildStoneMeshes(lastPlaced);
   syncLayerVisibility(lastPlaced);
   refreshUI(); refreshHints();
+
+  // Opponent placed a stone — clack sound + capture clatter if applicable
+  if (isNewMove) {
+    playStoneSound();
+    if (opponentCaptured > 0) {
+      setTimeout(() => playCaptureSound(opponentCaptured), 80);
+    }
+  }
+
   if (remoteData.gameOver) endGame();
 }
 

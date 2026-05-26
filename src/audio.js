@@ -62,3 +62,63 @@ export function playStoneSound() {
     osc.start(now); osc.stop(now + 0.22);
   } catch (_) {}
 }
+
+// ─── Capture clatter ──────────────────────────────────────────────────────────
+// Several quick stone-clacks at varied pitches, staggered like stones being
+// scooped up and dropped into a pile. Count scales with captured stones (capped).
+export function playCaptureSound(captureCount = 1) {
+  if (!soundEnabled) return;
+  try {
+    const ac = getCtx();
+    if (ac.state === 'suspended') ac.resume();
+    const now = ac.currentTime;
+
+    // 1 captured stone → 3 clacks; more captures → up to 8 clacks
+    const clacks = Math.min(3 + captureCount, 8);
+    const sr = ac.sampleRate;
+
+    for (let i = 0; i < clacks; i++) {
+      // Stagger each clack 20–70 ms apart with some randomness
+      const delay = i * (0.025 + Math.random() * 0.045);
+      const t0    = now + delay;
+      // Later clacks slightly quieter — pile settling
+      const fade  = 1 - i / (clacks + 2);
+
+      // — Noise burst (the click of stone-on-stone) —
+      const len = Math.ceil(sr * 0.04);
+      const buf = ac.createBuffer(1, len, sr);
+      const d   = buf.getChannelData(0);
+      for (let j = 0; j < len; j++)
+        d[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / len, 4);
+
+      const src = ac.createBufferSource();
+      src.buffer = buf;
+
+      const bp = ac.createBiquadFilter();
+      bp.type = 'bandpass';
+      // Random pitch per clack so stones sound distinct
+      bp.frequency.value = 1700 + Math.random() * 1400;
+      bp.Q.value = 0.7;
+
+      const gN = ac.createGain();
+      gN.gain.setValueAtTime(0.45 * fade, t0);
+      gN.gain.exponentialRampToValueAtTime(0.001, t0 + 0.04);
+
+      src.connect(bp); bp.connect(gN); gN.connect(ac.destination);
+      src.start(t0); src.stop(t0 + 0.04);
+
+      // — Short tonal body (lower than placement — "stone in pile") —
+      const osc = ac.createOscillator();
+      const gO  = ac.createGain();
+      osc.type  = 'sine';
+      const f0  = 180 + Math.random() * 160;
+      osc.frequency.setValueAtTime(f0, t0);
+      osc.frequency.exponentialRampToValueAtTime(f0 * 0.55, t0 + 0.12);
+      gO.gain.setValueAtTime(0.10 * fade, t0);
+      gO.gain.exponentialRampToValueAtTime(0.001, t0 + 0.15);
+
+      osc.connect(gO); gO.connect(ac.destination);
+      osc.start(t0); osc.stop(t0 + 0.15);
+    }
+  } catch (_) {}
+}
