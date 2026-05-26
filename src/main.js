@@ -372,9 +372,26 @@ async function handleUndoResponse(accepted) {
 }
 
 // ─── AI move ─────────────────────────────────────────────────────────────────
-function doAiMove() {
+async function doAiMove() {
   if (gameOver) return;
+
+  // MCTS (Hard) takes ~2 s — show a thinking indicator and yield one frame
+  // so the button text renders before the synchronous compute blocks the UI.
+  const aiBtn = document.getElementById('aiBtn');
+  const isHard = aiDifficulty === 'hard';
+  if (isHard) {
+    aiBtn.textContent = 'Thinking…';
+    aiBtn.disabled = true;
+    await new Promise(r => setTimeout(r, 30));
+  }
+
   const move = aiMove(current);
+
+  if (isHard) {
+    aiBtn.textContent = 'Computer move ▶';
+    aiBtn.disabled = false;
+  }
+
   if (!move) {
     const over = doPass();
     if (over) { endGame(); return; }

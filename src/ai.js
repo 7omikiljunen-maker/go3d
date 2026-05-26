@@ -342,10 +342,193 @@ function minimax(brd, depth, alpha, beta, isMaximizing, aiPlayer, phase, candLim
   }
 }
 
+// ─── MCTS — used for Hard difficulty ─────────────────────────────────────────
+// UCT (UCB1 applied to Trees) with random rollouts and a fast neighbour-scan
+// heuristic (_qs) for move ordering.  All boards are flat Int8Arrays so copies
+// are essentially a single memcpy — much cheaper than nested JS arrays.
+
+const _MC_MS = 2000;   // think time per move (ms)
+const _MC_C  = 1.41;   // UCB1 exploration constant (≈ √2)
+const _MC_RD = 25;     // max moves per rollout
+const _MC_K  = 10;     // expansion candidates per node
+const _D6    = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+
+function _fi(x, y, z) { return x*N*N + y*N + z; }
+
+// Snapshot current board → flat Int8Array
+function _flat() {
+  const f = new Int8Array(N*N*N);
+  for (let x=0;x<N;x++) for (let y=0;y<N;y++) for (let z=0;z<N;z++)
+    f[_fi(x,y,z)] = board[x][y][z];
+  return f;
+}
+
+// BFS group on a flat board → { stones:[idx,...], libs:number }
+function _grp(f, si) {
+  const c = f[si]; if (!c) return { stones:[], libs:0 };
+  const sz = N*N*N;
+  const vis = new Uint8Array(sz), lv = new Uint8Array(sz);
+  vis[si] = 1;
+  const stk = [si], stones = [si]; let libs = 0;
+  while (stk.length) {
+    const i = stk.pop();
+    const x=(i/(N*N))|0, r=i%(N*N), y=(r/N)|0, z=r%N;
+    for (const [dx,dy,dz] of _D6) {
+      const nx=x+dx, ny=y+dy, nz=z+dz;
+      if (nx<0||nx>=N||ny<0||ny>=N||nz<0||nz>=N) continue;
+      const ni = _fi(nx,ny,nz);
+      if      (f[ni]===0 && !lv[ni])            { lv[ni]=1; libs++; }
+      else if (f[ni]===c  && !vis[ni])           { vis[ni]=1; stk.push(ni); stones.push(ni); }
+    }
+  }
+  return { stones, libs };
+}
+
+// Apply [x,y,z] to a flat copy → new board or null (occupied / suicide)
+function _apply(f, x, y, z, pl) {
+  const pi = _fi(x,y,z); if (f[pi]!==0) return null;
+  const b = new Int8Array(f);
+  b[pi] = pl;
+  const opp = 3-pl;
+  for (const [dx,dy,dz] of _D6) {
+    const nx=x+dx, ny=y+dy, nz=z+dz;
+    if (nx<0||nx>=N||ny<0||ny>=N||nz<0||nz>=N) continue;
+    const ni = _fi(nx,ny,nz);
+    if (b[ni]!==opp) continue;
+    const { stones, libs } = _grp(b, ni);
+    if (libs===0) for (const s of stones) b[s]=0;
+  }
+  if (_grp(b, pi).libs===0) return null; // suicide
+  return b;
+}
+
+// O(1) neighbour-scan heuristic — no allocation, no board copy
+// Rewards captures, ataris, connectivity, and centrality.
+function _qs(f, x, y, z, pl) {
+  const opp = 3-pl; let s = 0;
+  for (const [dx,dy,dz] of _D6) {
+    const nx=x+dx, ny=y+dy, nz=z+dz;
+    if (nx<0||nx>=N||ny<0||ny>=N||nz<0||nz>=N) continue;
+    const ni = _fi(nx,ny,nz);
+    if (f[ni]===opp) {
+      // Estimate libs of enemy neighbour from its own direct neighbours.
+      // Subtract 1 because we're about to fill one of those liberties.
+      let e = -1;
+      for (const [dx2,dy2,dz2] of _D6) {
+        const nnx=nx+dx2, nny=ny+dy2, nnz=nz+dz2;
+        if (nnx<0||nnx>=N||nny<0||nny>=N||nnz<0||nnz>=N) continue;
+        if (f[_fi(nnx,nny,nnz)]===0) e++;
+      }
+      if      (e<=0) s+=250;   // likely capture
+      else if (e===1) s+=80;   // likely atari
+      else           s+=8;
+    } else if (f[ni]===pl) s+=12;
+  }
+  const cx=x-(N-1)/2, cy=y-(N-1)/2, cz=z-(N-1)/2;
+  s += 22 - Math.sqrt(cx*cx+cy*cy+cz*cz)*3;
+  return s;
+}
+
+// Top-K candidate moves by _qs (legality checked lazily during expansion)
+function _topK(f, pl, k) {
+  const sz = N*N*N, scored = [];
+  for (let i=0; i<sz; i++) {
+    if (f[i]!==0) continue;
+    const x=(i/(N*N))|0, r=i%(N*N), y=(r/N)|0, z=r%N;
+    scored.push({ x, y, z, s: _qs(f,x,y,z,pl) + Math.random()*6 });
+  }
+  scored.sort((a,b) => b.s - a.s);
+  return scored.slice(0, k).map(({ x, y, z }) => [x, y, z]);
+}
+
+// Random rollout limited to _MC_RD moves.
+// Returns 1 if aiPl leads by stone count at the end, else 0.
+function _rollout(f, curPl, aiPl) {
+  let b = new Int8Array(f), p = curPl, passes = 0;
+  const sz = N*N*N;
+  for (let d=0; d<_MC_RD && passes<2; d++) {
+    let moved = false;
+    for (let t=0; t<12 && !moved; t++) {
+      const i = (Math.random()*sz)|0;
+      if (b[i]!==0) continue;
+      const x=(i/(N*N))|0, r=i%(N*N), y=(r/N)|0, z=r%N;
+      const nb = _apply(b,x,y,z,p);
+      if (nb) { b=nb; moved=true; }
+    }
+    if (moved) passes=0; else passes++;
+    p = 3-p;
+  }
+  let ai=0, op=0;
+  for (let i=0;i<sz;i++) { if(b[i]===aiPl) ai++; else if(b[i]) op++; }
+  return ai >= op ? 1 : 0;
+}
+
+// MCTS node factory
+function _node(brd, player, move, parent) {
+  return { brd, player, move, parent, wins:0, visits:0, children:[], untried:null };
+}
+
+// UCB1 score
+function _ucb(n, pv) {
+  if (!n.visits) return Infinity;
+  return n.wins/n.visits + _MC_C * Math.sqrt(Math.log(pv)/n.visits);
+}
+
+// Walk down the tree to the most promising under-explored node
+function _select(root) {
+  let n = root;
+  while ((n.untried===null || n.untried.length===0) && n.children.length>0) {
+    const pv = n.visits;
+    n = n.children.reduce((b,c) => _ucb(c,pv) > _ucb(b,pv) ? c : b);
+  }
+  return n;
+}
+
+// Main MCTS function — returns [x,y,z] or null (pass)
+function mctsMove(player) {
+  const flat = _flat();
+  const root = _node(flat, player, null, null);
+  root.untried = _topK(flat, player, _MC_K);
+
+  const deadline = Date.now() + _MC_MS;
+
+  while (Date.now() < deadline) {
+    // 1. Select
+    let node = _select(root);
+
+    // 2. Expand — try candidates until a legal one is found
+    if (node.untried===null) node.untried = _topK(node.brd, node.player, _MC_K);
+    let expanded = false;
+    while (node.untried.length>0 && !expanded) {
+      const [x,y,z] = node.untried.pop();
+      const nb = _apply(node.brd, x, y, z, node.player);
+      if (nb) {
+        const child = _node(nb, 3-node.player, [x,y,z], node);
+        node.children.push(child);
+        node = child;
+        expanded = true;
+      }
+    }
+
+    // 3. Rollout
+    const result = _rollout(node.brd, node.player, player);
+
+    // 4. Backpropagate
+    let n = node;
+    while (n) { n.visits++; n.wins+=result; n=n.parent; }
+  }
+
+  if (!root.children.length) return null;
+  return root.children.reduce((a,b) => a.visits>b.visits ? a : b).move;
+}
+
 // ─── Main AI entry point ──────────────────────────────────────────────────────
 export function aiMove(player) {
   const moves = legalMoves(player);
   if (moves.length === 0) return null;
+
+  // Hard: use MCTS — much stronger on large boards, scales with time not depth
+  if (aiDifficulty === 'hard') return mctsMove(player);
 
   // Easy: 40 % of moves are completely random — makes the AI feel genuinely weak
   if (aiDifficulty === 'easy' && Math.random() < 0.4) {
