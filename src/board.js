@@ -19,7 +19,8 @@ export function cfg(n) {
   if (n === 3) return { sp: 1.4,  stoneR: 0.44, hintR: 0.34, dotR: 0.07,  camR: 10 };
   if (n === 5) return { sp: 1.0,  stoneR: 0.38, hintR: 0.28, dotR: 0.055, camR: 16 };
   if (n === 7) return { sp: 0.82, stoneR: 0.28, hintR: 0.22, dotR: 0.045, camR: 22 };
-  /*  9  */    return { sp: 0.65, stoneR: 0.20, hintR: 0.15, dotR: 0.028, camR: 32 };
+  if (n === 9) return { sp: 0.65, stoneR: 0.20, hintR: 0.15, dotR: 0.028, camR: 32 };
+  /*  11 */    return { sp: 0.53, stoneR: 0.16, hintR: 0.12, dotR: 0.020, camR: 44 };
 }
 
 export let C   = cfg(5);

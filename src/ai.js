@@ -73,7 +73,8 @@ function starCoordSet() {
   if (N === 3) return new Set([1]);
   if (N === 5) return new Set([1, 3]);
   if (N === 7) return new Set([2, 4]);
-  return      new Set([2, 4, 6]);
+  if (N === 9) return new Set([2, 4, 6]);
+  /*  11 */    return new Set([2, 5, 8]);
 }
 
 function isStarPoint(x, y, z) {
