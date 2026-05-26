@@ -10,6 +10,7 @@ let lightTheme = false;
 
 // Groups
 export let gridGroup, dotsGroup, hintsGroup, stonesGroup, terrGroup, markerGroup;
+let starfieldGroup; // stars + nebula, dark-mode only
 
 // Mesh state
 export let stoneMeshMap = {};
@@ -61,6 +62,72 @@ export function initRenderer(canvas) {
   stonesGroup = new THREE.Group(); scene.add(stonesGroup);
   terrGroup   = new THREE.Group(); scene.add(terrGroup);
   markerGroup = new THREE.Group(); scene.add(markerGroup);
+
+  starfieldGroup = buildStarfield();
+  scene.add(starfieldGroup);
+}
+
+// ─── Starfield + nebula — procedural, no textures ─────────────────────────────
+function buildStarfield() {
+  const group = new THREE.Group();
+
+  // 3 layers of stars at different sizes/brightnesses, will twinkle out of phase
+  const layers = [
+    { count: 500, size: 0.04, baseOpacity: 0.45 },
+    { count: 200, size: 0.06, baseOpacity: 0.70 },
+    { count: 80,  size: 0.09, baseOpacity: 1.00 },
+  ];
+
+  for (const cfg of layers) {
+    const positions = new Float32Array(cfg.count * 3);
+    for (let i = 0; i < cfg.count; i++) {
+      // Distribute on a sphere far behind the board
+      const radius = 70 + Math.random() * 40;
+      const theta  = Math.random() * Math.PI * 2;
+      const phi    = Math.acos(2 * Math.random() - 1);
+      positions[i*3]   = radius * Math.sin(phi) * Math.cos(theta);
+      positions[i*3+1] = radius * Math.sin(phi) * Math.sin(theta);
+      positions[i*3+2] = radius * Math.cos(phi);
+    }
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    const mat = new THREE.PointsMaterial({
+      color: 0xffffff,
+      size: cfg.size,
+      opacity: cfg.baseOpacity,
+      transparent: true,
+      depthWrite: false,
+      fog: false,           // stars don't fade with fog
+    });
+    mat.userData.baseOpacity  = cfg.baseOpacity;
+    mat.userData.twinklePhase = Math.random() * Math.PI * 2;
+
+    group.add(new THREE.Points(geom, mat));
+  }
+
+  // Nebula clouds — large soft spheres with additive blending give a gas-cloud look
+  const nebulaColors = [0x5a2a99, 0x2244aa, 0x882277];
+  for (let i = 0; i < 3; i++) {
+    const r = 18 + Math.random() * 12;
+    const geom = new THREE.SphereGeometry(r, 16, 16);
+    const mat  = new THREE.MeshBasicMaterial({
+      color: nebulaColors[i],
+      opacity: 0.05,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.BackSide,
+      fog: false,
+    });
+    const cloud = new THREE.Mesh(geom, mat);
+    const a = (i / 3) * Math.PI * 2 + Math.random();
+    const d = 45 + Math.random() * 15;
+    cloud.position.set(Math.cos(a) * d, (Math.random() - 0.5) * 25, Math.sin(a) * d);
+    group.add(cloud);
+  }
+
+  return group;
 }
 
 // ─── Resize ──────────────────────────────────────────────────────────────────
@@ -292,6 +359,20 @@ export function startRenderLoop() {
       }
     }
 
+    // Slow starfield twinkle — each layer phases independently
+    if (starfieldGroup && starfieldGroup.visible) {
+      const t = clock.elapsedTime;
+      for (const child of starfieldGroup.children) {
+        if (child.isPoints) {
+          const mat   = child.material;
+          const base  = mat.userData.baseOpacity ?? mat.opacity;
+          const phase = mat.userData.twinklePhase ?? 0;
+          // Modulate ±20% slowly (0.15 Hz ≈ 6.7 s per cycle)
+          mat.opacity = base * (0.8 + 0.2 * Math.sin(t * 0.9 + phase));
+        }
+      }
+    }
+
     renderer.render(scene, camera);
   }
   animate();
@@ -302,6 +383,7 @@ export function setSceneBg(hex, isLight = false) {
   lightTheme = isLight;
   renderer.setClearColor(hex, 1);
   if (scene.fog) scene.fog.color.setHex(hex);
+  if (starfieldGroup) starfieldGroup.visible = !isLight;   // dark-mode only
   // Only rebuild if initBoard() has already run (layerVisible is an Array).
   // On first load this is called before setupBoard(), so we skip here and
   // let setupBoard()/restoreFromSave() call buildGrid()+buildDots() instead.
