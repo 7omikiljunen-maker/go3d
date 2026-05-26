@@ -823,7 +823,7 @@ async function triggerInstall() {
   track('install_clicked');
   if (!installPrompt) {
     // already installed or browser doesn't support — guide user
-    alert('To install: click the install icon (⊕) in your browser address bar, or use browser menu → "Install 3D Go".');
+    alert('To install: click the install icon (⊕) in your browser address bar, or use browser menu → "Install Go 3D".');
     return;
   }
   installPrompt.prompt();

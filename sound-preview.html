@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Go 3D — Sound Preview</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      max-width: 480px;
+      margin: 40px auto;
+      padding: 24px;
+      line-height: 1.6;
+    }
+    h1 { font-size: 20px; margin-bottom: 8px; }
+    p  { color: #aaa; margin-top: 0; font-size: 14px; }
+    button {
+      display: block;
+      width: 100%;
+      margin: 8px 0;
+      padding: 14px;
+      background: #2a2a44;
+      color: #eee;
+      border: 1px solid #444;
+      border-radius: 8px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    button:hover { background: #353555; }
+    .placement { background: #1a3a5a; }
+    .capture   { background: #5a1a1a; }
+  </style>
+</head>
+<body>
+  <h1>Go 3D — Sound Preview</h1>
+  <p>Click any button to hear the sound. Use this to dial in the capture clatter.</p>
+
+  <button class="placement" onclick="playStone()">Single stone placement (existing sound)</button>
+
+  <h3 style="margin-top:24px;color:#aaa;font-size:13px;text-transform:uppercase;">Capture clatter (new)</h3>
+  <button class="capture" onclick="playCapture(1)">1 stone captured</button>
+  <button class="capture" onclick="playCapture(2)">2 stones captured</button>
+  <button class="capture" onclick="playCapture(4)">4 stones captured</button>
+  <button class="capture" onclick="playCapture(8)">8+ stones captured (max clatter)</button>
+
+  <h3 style="margin-top:24px;color:#aaa;font-size:13px;text-transform:uppercase;">Combined (real game)</h3>
+  <button onclick="playStone(); setTimeout(() => playCapture(3), 80);">Placement → 3 captures</button>
+
+<script>
+let ctx = null;
+function getCtx() {
+  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+  return ctx;
+}
+
+function playStone() {
+  const ac = getCtx();
+  if (ac.state === 'suspended') ac.resume();
+  const now = ac.currentTime;
+
+  const sr  = ac.sampleRate;
+  const len = Math.ceil(sr * 0.05);
+  const buf = ac.createBuffer(1, len, sr);
+  const d   = buf.getChannelData(0);
+  for (let i = 0; i < len; i++)
+    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 5);
+
+  const src = ac.createBufferSource(); src.buffer = buf;
+  const bp = ac.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = 2200; bp.Q.value = 0.8;
+  const gN = ac.createGain();
+  gN.gain.setValueAtTime(0.6, now);
+  gN.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+  src.connect(bp); bp.connect(gN); gN.connect(ac.destination);
+  src.start(now); src.stop(now + 0.05);
+
+  const osc = ac.createOscillator(); const gO = ac.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(300, now);
+  osc.frequency.exponentialRampToValueAtTime(140, now + 0.15);
+  gO.gain.setValueAtTime(0.14, now);
+  gO.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+  osc.connect(gO); gO.connect(ac.destination);
+  osc.start(now); osc.stop(now + 0.22);
+}
+
+function playCapture(captureCount) {
+  const ac = getCtx();
+  if (ac.state === 'suspended') ac.resume();
+  const now = ac.currentTime;
+
+  const clacks = Math.min(3 + captureCount, 8);
+  const sr = ac.sampleRate;
+
+  for (let i = 0; i < clacks; i++) {
+    const delay = i * (0.025 + Math.random() * 0.045);
+    const t0    = now + delay;
+    const fade  = 1 - i / (clacks + 2);
+
+    const len = Math.ceil(sr * 0.04);
+    const buf = ac.createBuffer(1, len, sr);
+    const d   = buf.getChannelData(0);
+    for (let j = 0; j < len; j++)
+      d[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / len, 4);
+
+    const src = ac.createBufferSource(); src.buffer = buf;
+    const bp = ac.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 1700 + Math.random() * 1400;
+    bp.Q.value = 0.7;
+    const gN = ac.createGain();
+    gN.gain.setValueAtTime(0.45 * fade, t0);
+    gN.gain.exponentialRampToValueAtTime(0.001, t0 + 0.04);
+    src.connect(bp); bp.connect(gN); gN.connect(ac.destination);
+    src.start(t0); src.stop(t0 + 0.04);
+
+    const osc = ac.createOscillator(); const gO = ac.createGain();
+    osc.type = 'sine';
+    const f0 = 180 + Math.random() * 160;
+    osc.frequency.setValueAtTime(f0, t0);
+    osc.frequency.exponentialRampToValueAtTime(f0 * 0.55, t0 + 0.12);
+    gO.gain.setValueAtTime(0.10 * fade, t0);
+    gO.gain.exponentialRampToValueAtTime(0.001, t0 + 0.15);
+    osc.connect(gO); gO.connect(ac.destination);
+    osc.start(t0); osc.stop(t0 + 0.15);
+  }
+}
+</script>
+</body>
+</html>

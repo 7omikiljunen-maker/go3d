@@ -1,6 +1,6 @@
 {
-  "name": "3D Go",
-  "short_name": "3D Go",
+  "name": "Go 3D",
+  "short_name": "Go 3D",
   "description": "Play Go on a 3D cubic board",
   "start_url": "/",
   "display": "standalone",
