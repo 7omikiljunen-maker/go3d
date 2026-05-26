@@ -139,9 +139,11 @@ function refreshUI() {
 
 // ─── Sync UI button active states ────────────────────────────────────────────
 function syncSizeButtons() {
-  document.querySelectorAll('#sizeButtons button').forEach(b =>
-    b.classList.toggle('active', parseInt(b.dataset.size) === N)
-  );
+  document.querySelectorAll('#sizeButtons button').forEach(b => {
+    const n = parseInt(b.dataset.size);
+    b.classList.toggle('active', n === N);
+    if (n === 11) b.disabled = playMode !== 'pvp';
+  });
 }
 
 function syncModeButtons() {
@@ -531,6 +533,7 @@ document.querySelectorAll('#modeButtons button[data-mode]').forEach(btn => {
   btn.onclick = () => {
     if (isOnline) return;
     setPlayMode(btn.dataset.mode);
+    if (playMode !== 'pvp' && N === 11) setN(9); // 11³ is PvP only
     syncModeButtons();
     setupBoard();
   };
