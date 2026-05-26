@@ -1,7 +1,7 @@
 // ─── multiplayer.js — Firebase room management, state sync, chat ──────────────
 import { db } from './firebase.js';
 import {
-  ref, set, get, update,
+  ref, set, get, update, remove,
   onValue, onChildAdded, push, onDisconnect,
 } from 'firebase/database';
 
@@ -278,6 +278,17 @@ export async function signalLeave() {
   if (!roomRef || !myPlayer) return;
   const field = myPlayer === 1 ? 'hostOnline' : 'guestOnline';
   try { await update(roomRef, { [field]: false }); } catch (_) {}
+  // Delete the room after a short delay — gives the other player's listener
+  // time to receive the online-flag change and show "opponent left" before
+  // the room disappears.
+  const refToDelete = roomRef;
+  setTimeout(() => remove(refToDelete).catch(() => {}), 3000);
+}
+
+/** Delete the room immediately — use when no opponent needs to be notified
+ *  (e.g. host cancels while still waiting for a guest). */
+export function deleteRoom() {
+  if (roomRef) remove(roomRef).catch(() => {});
 }
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────

@@ -41,7 +41,7 @@ import { checkPaid, watchPaid } from './payment.js';
 
 import {
   createRoom, joinRoom, rejoinRoom, subscribeRoom, pushGameState,
-  sendChat, subscribeChat, signalLeave, leaveRoom,
+  sendChat, subscribeChat, signalLeave, leaveRoom, deleteRoom,
   sendUndoRequest, sendUndoResponse,
   roomCode, myPlayer, isOnline, unflattenBoard,
 } from './multiplayer.js';
@@ -687,6 +687,7 @@ document.getElementById('createGameBtn').onclick = async () => {
 
 // ─── Cancel waiting ───────────────────────────────────────────────────────────
 document.getElementById('cancelWaitBtn').onclick = () => {
+  deleteRoom(); // no opponent joined yet — delete immediately
   leaveRoom();
   waitingOvl.style.display = 'none';
   sessionStorage.removeItem('go3d-online-room');
