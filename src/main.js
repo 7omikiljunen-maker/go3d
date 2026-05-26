@@ -35,6 +35,7 @@ import {
 } from './ui.js';
 
 import { signInWithGoogle, signOut, onAuthChange, resolveRedirect } from './auth.js';
+import { track } from './track.js';
 import { checkPaid, watchPaid } from './payment.js';
 
 import {
@@ -384,6 +385,12 @@ function endGame() {
   // Show overlay undo button only when there is something to undo
   document.getElementById('overlayUndoBtn').style.display = history.length > 0 ? '' : 'none';
   if (!isOnline) clearStorage();
+  track('game_completed', {
+    mode: isOnline ? 'online' : playMode,
+    board_size: N,
+    black_captures: captures[0],
+    white_captures: captures[1],
+  });
 }
 
 // ─── Setup / reset ───────────────────────────────────────────────────────────
@@ -561,9 +568,11 @@ async function doCreateGame() {
   let code;
   try {
     code = await createRoom(N, board);
+    track('room_created', { board_size: N });
   } catch (err) {
     btn.disabled = false;
     btn.textContent = '✦ Create game';
+    track('room_create_failed', { error: err.code || err.message || String(err) });
     alert('Could not create game: ' + (err.code || err.message || err));
     return;
   }
@@ -598,11 +607,13 @@ function showPaymentGate(uid) {
 
   // Listen for Firebase confirmation — fires automatically when webhook writes paid:true
   stopWatchingPayment = watchPaid(uid, () => {
+    track('payment_completed', { value: 1, currency: 'EUR' });
     closePaymentGate();
     doCreateGame();
   });
 
   document.getElementById('payBtn').onclick = () => {
+    track('payment_initiated');
     window.open(`${STRIPE_LINK}?client_reference_id=${uid}`, '_blank');
     document.getElementById('payBtn').textContent = 'Waiting for payment…';
     document.getElementById('payBtn').disabled = true;
@@ -610,7 +621,10 @@ function showPaymentGate(uid) {
       'Complete payment in the new tab — this page will update automatically.';
   };
 
-  document.getElementById('payBackBtn').onclick = closePaymentGate;
+  document.getElementById('payBackBtn').onclick = () => {
+    track('payment_cancelled');
+    closePaymentGate();
+  };
 }
 
 function closePaymentGate() {
@@ -620,13 +634,19 @@ function closePaymentGate() {
 
 // ─── Create game button ───────────────────────────────────────────────────────
 document.getElementById('createGameBtn').onclick = async () => {
+  track('create_game_clicked', { board_size: onlineN });
+
   // Step 1: must be signed in
   if (!currentUser) {
     try {
       const result = await signInWithGoogle();
-      currentUser = result.user;
-      updateAuthUI();
+      if (result) {
+        currentUser = result.user;
+        updateAuthUI();
+        track('signin_completed');
+      }
     } catch (_) {
+      track('signin_cancelled');
       return; // user closed the popup
     }
   }
@@ -634,6 +654,7 @@ document.getElementById('createGameBtn').onclick = async () => {
   // Step 2: must have paid
   const paid = await checkPaid(currentUser.uid);
   if (!paid) {
+    track('payment_gate_shown');
     showPaymentGate(currentUser.uid);
     return;
   }
@@ -660,12 +681,18 @@ document.getElementById('joinGameBtn').onclick = async () => {
   btn.disabled = true;
   btn.textContent = 'Joining…';
 
+  track('join_game_attempted');
   const result = await joinRoom(code);
 
   btn.disabled = false;
   btn.textContent = 'Join game →';
 
-  if (!result.ok) { joinError.textContent = result.error; return; }
+  if (!result.ok) {
+    track('join_game_failed', { error: result.error });
+    joinError.textContent = result.error;
+    return;
+  }
+  track('room_joined', { board_size: result.N });
 
   // Apply host's board state
   setN(result.N);
@@ -793,6 +820,7 @@ function hideInstallUI() {
 }
 
 async function triggerInstall() {
+  track('install_clicked');
   if (!installPrompt) {
     // already installed or browser doesn't support — guide user
     alert('To install: click the install icon (⊕) in your browser address bar, or use browser menu → "Install 3D Go".');
@@ -800,6 +828,7 @@ async function triggerInstall() {
   }
   installPrompt.prompt();
   const { outcome } = await installPrompt.userChoice;
+  track('install_outcome', { outcome });
   if (outcome === 'accepted') hideInstallUI();
 }
 
