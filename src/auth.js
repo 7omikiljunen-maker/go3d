@@ -4,6 +4,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signInWithRedirect,
+  signInAnonymously as fbSignInAnonymously,
   getRedirectResult,
   signOut as fbSignOut,
   onAuthStateChanged,
@@ -43,6 +44,10 @@ export async function signInWithGoogle() {
 
 /** Call once on page load; resolves any pending redirect sign-in. */
 export const resolveRedirect = () => getRedirectResult(auth);
+
+/** Sign in anonymously — used for guests joining a room so they have a UID
+ *  for Firebase security-rule write checks, without forcing a Google account. */
+export const signInAnonymously = () => fbSignInAnonymously(auth);
 
 /** Signs the current user out. */
 export const signOut = () => fbSignOut(auth);

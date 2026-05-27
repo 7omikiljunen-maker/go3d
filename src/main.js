@@ -36,7 +36,7 @@ import {
   showOverlay, hideOverlay, initScoringBtn, syncScoringBtn,
 } from './ui.js';
 
-import { signInWithGoogle, signOut, onAuthChange, resolveRedirect } from './auth.js';
+import { signInWithGoogle, signInAnonymously, signOut, onAuthChange, resolveRedirect } from './auth.js';
 import { track } from './track.js';
 import { checkPaid, watchPaid } from './payment.js';
 
@@ -266,12 +266,46 @@ function handleOpponentLeft(gameWasActive) {
   document.getElementById('overlay').style.display = 'flex';
 }
 
+// ─── Validate remote room state — defense against malicious Firebase writes ──
+// Firebase rules limit WHO can write, but not WHAT they write. Validate every
+// field before trusting it. Out-of-range N (e.g. 1000000) would freeze the tab
+// inside unflattenBoard's N³ loop, so this check is load-bearing for safety.
+const VALID_BOARD_SIZES = [3, 5, 7, 9, 11];
+
+function validateRemoteState(d) {
+  if (!d || typeof d !== 'object') return false;
+  if (!VALID_BOARD_SIZES.includes(d.N)) return false;
+  if (typeof d.board !== 'string' || d.board.length > 100000) return false;
+  if (d.current !== 1 && d.current !== 2) return false;
+
+  const capOK = v => typeof v === 'number' && v >= 0 && v <= 10000 && Number.isFinite(v);
+  if (!capOK(d.capturesBlack ?? 0)) return false;
+  if (!capOK(d.capturesWhite ?? 0)) return false;
+
+  if (d.consecutivePasses != null &&
+      (typeof d.consecutivePasses !== 'number' || d.consecutivePasses < 0 || d.consecutivePasses > 10)) {
+    return false;
+  }
+  // lastX/Y/Z must be in range [0, N-1] if set
+  const coordOK = v => v == null || (Number.isInteger(v) && v >= 0 && v < d.N);
+  if (!coordOK(d.lastX) || !coordOK(d.lastY) || !coordOK(d.lastZ)) return false;
+
+  return true;
+}
+
 // ─── Apply opponent's move from Firebase ─────────────────────────────────────
 function applyOpponentState(remoteData) {
-  const n = remoteData.N ?? N;
+  if (!validateRemoteState(remoteData)) {
+    console.warn('Rejected malformed remote state');
+    return;
+  }
+  const n = remoteData.N;
   let newBoard;
-  try { newBoard = unflattenBoard(JSON.parse(remoteData.board), n); }
-  catch (_) { return; }
+  try {
+    const flat = JSON.parse(remoteData.board);
+    if (!Array.isArray(flat) || flat.length !== n * n * n) return;
+    newBoard = unflattenBoard(flat, n);
+  } catch (_) { return; }
 
   // Snapshot pre-state so we can detect what changed
   const prevTotalCaptures = (captures[0] ?? 0) + (captures[1] ?? 0);
@@ -733,6 +767,19 @@ document.getElementById('joinGameBtn').onclick = async () => {
   btn.disabled = true;
   btn.textContent = 'Joining…';
 
+  // Firebase rules require all writes to be authenticated. Guests don't need
+  // a Google account, but they do need a UID — sign in anonymously if needed.
+  if (!currentUser) {
+    try { await signInAnonymously(); }
+    catch (err) {
+      track('join_game_failed', { error: 'anon_auth_failed' });
+      joinError.textContent = 'Could not connect — please try again';
+      btn.disabled = false;
+      btn.textContent = 'Join game →';
+      return;
+    }
+  }
+
   track('join_game_attempted');
   const result = await joinRoom(code);
 
@@ -782,6 +829,11 @@ document.getElementById('closeChatBtn').onclick = () => {
 };
 
 function handleNewChatMsg(msg) {
+  // Defensive: even if rules let a bad message slip through, never let one
+  // freeze the UI with a 10 MB string. Coerce + cap before rendering.
+  const text = String(msg.text ?? '').slice(0, 500);
+  if (!text) return;
+
   const div = document.createElement('div');
   div.className = 'chat-msg ' + (msg.player === myPlayer ? 'mine' : 'theirs');
   if (msg.player !== myPlayer) {
@@ -790,7 +842,7 @@ function handleNewChatMsg(msg) {
     sender.textContent = 'Opponent';
     div.appendChild(sender);
   }
-  div.appendChild(document.createTextNode(msg.text));
+  div.appendChild(document.createTextNode(text));
   chatMessages.appendChild(div);
   // Auto-scroll to bottom — unless the user has scrolled up to read history
   const nearBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < 60;

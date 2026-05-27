@@ -300,9 +300,13 @@ export function deleteRoom() {
 }
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
+export const CHAT_MAX_LEN = 500;
+
 export async function sendChat(text) {
-  if (!chatRef || !text.trim()) return;
-  await push(chatRef, { player: myPlayer, text: text.trim(), ts: Date.now() });
+  if (!chatRef) return;
+  const clean = String(text || '').trim().slice(0, CHAT_MAX_LEN);
+  if (!clean) return;
+  await push(chatRef, { player: myPlayer, text: clean, ts: Date.now() });
 }
 
 /** onNewMessage({ key, player, text, ts }) called for each new chat message. */
