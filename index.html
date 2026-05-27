@@ -314,6 +314,9 @@
       flex: 1; overflow-y: auto;
       padding: 8px 12px; display: flex;
       flex-direction: column; gap: 8px;
+      touch-action: pan-y;           /* lets Android scroll this element */
+      overscroll-behavior: contain;  /* stops scroll leaking to the page */
+      -webkit-overflow-scrolling: touch; /* smooth momentum on iOS */
     }
     /* Thin aesthetic scrollbar — no grey OS-default bar */
     #chat-messages::-webkit-scrollbar { width: 3px; }
