@@ -482,7 +482,16 @@ async function doAiMove() {
   try {
     move = aiMove(current);
   } catch (err) {
+    // Rich diagnostic so the root cause is visible even without source maps
     console.error('AI compute failed — falling back to random legal move:', err);
+    console.error('AI ctx:', {
+      message: err && err.message,
+      stack:   err && err.stack,
+      N, current, aiDifficulty,
+      playMode, gameOver,
+      koState,
+      historyLen: history.length,
+    });
     const legal = legalMoves(current);
     if (legal.length > 0) {
       move = legal[Math.floor(Math.random() * legal.length)];

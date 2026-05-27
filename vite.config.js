@@ -4,6 +4,10 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   // '/' because custom domain go3dgame.com is connected.
   base: '/',
+  // Emit source maps so production stack traces show real function names
+  // and line numbers (not xS/ES/Uy). Adds ~one .map file per JS chunk;
+  // browsers only download them when DevTools is open, so zero impact for users.
+  build: { sourcemap: true },
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
