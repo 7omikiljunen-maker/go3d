@@ -861,7 +861,8 @@ document.getElementById('themeBtn').onclick = () => {
 };
 
 // ─── Auto-rotate toggle ───────────────────────────────────────────────────────
-let rotateMode = localStorage.getItem('go3d-rotate') === '1';
+// Default ON — only off if the user has explicitly turned it off
+let rotateMode = localStorage.getItem('go3d-rotate') !== '0';
 
 function syncRotateBtn() {
   document.getElementById('rotateBtn').textContent = rotateMode ? '🔄 On' : '🔄 Off';
