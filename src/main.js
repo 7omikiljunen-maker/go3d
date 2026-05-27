@@ -475,13 +475,18 @@ async function doAiMove() {
   }
 
   // Compute the move — wrapped in try/finally so the button NEVER stays stuck
-  // on "Thinking…" even if MCTS throws or returns unexpectedly.
+  // on "Thinking…" even if MCTS throws or returns unexpectedly. On error,
+  // fall back to a random legal move so the game keeps playing (instead of
+  // passing → another pass → immediate game end).
   let move = null;
   try {
     move = aiMove(current);
   } catch (err) {
-    console.error('AI compute failed:', err);
-    move = null;   // fall through to pass logic so the game keeps moving
+    console.error('AI compute failed — falling back to random legal move:', err);
+    const legal = legalMoves(current);
+    if (legal.length > 0) {
+      move = legal[Math.floor(Math.random() * legal.length)];
+    }
   } finally {
     if (isHard) {
       aiBtn.disabled    = false;
