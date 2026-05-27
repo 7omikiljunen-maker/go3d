@@ -766,6 +766,8 @@ document.getElementById('chatBtn').onclick = () => {
   chatPanel.style.display = 'flex';
   unreadCount = 0;
   chatBadge.style.display = 'none';
+  // Jump to latest message when opening
+  requestAnimationFrame(() => { chatMessages.scrollTop = chatMessages.scrollHeight; });
 };
 
 document.getElementById('closeChatBtn').onclick = () => {
@@ -784,9 +786,10 @@ function handleNewChatMsg(msg) {
   }
   div.appendChild(document.createTextNode(msg.text));
   chatMessages.appendChild(div);
-  // Keep only the last 2 messages — older ones are removed
-  while (chatMessages.children.length > 2) {
-    chatMessages.removeChild(chatMessages.firstChild);
+  // Auto-scroll to bottom — unless the user has scrolled up to read history
+  const nearBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < 60;
+  if (nearBottom || msg.player === myPlayer) {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
   if (!chatOpen && msg.player !== myPlayer) {
