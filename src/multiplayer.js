@@ -22,6 +22,8 @@ let opponentLeftNotified = false;
 let opponentLeftTimer    = null; // grace-period timer before declaring opponent left
 let lastSeenUndoReq      = 0;   // last undoReq.seq handled as the responder
 let pendingMyUndoSeq     = 0;   // seq of our outgoing request (0 = none)
+let lastSeenRematchReq   = 0;   // last rematchReq.seq handled as the responder
+let pendingMyRematchSeq  = 0;   // seq of our outgoing rematch request (0 = none)
 
 const OPPONENT_LEFT_GRACE_MS = 15 * 60 * 1000; // wait 15 min — tolerates mobile sleep, matches inactive-banner threshold
 
@@ -173,7 +175,8 @@ export async function rejoinRoom(code, player) {
  * onUndoResponse(accepted)   — our undo request was accepted/declined (optional).
  */
 export function subscribeRoom(onStateChange, onOpponentJoined, onOpponentLeft,
-                               onUndoRequest, onUndoResponse) {
+                               onUndoRequest, onUndoResponse,
+                               onRematchRequest, onRematchResponse) {
   if (!roomRef) return;
   unsubRoom = onValue(roomRef, snap => {
     if (!snap.exists()) {
@@ -238,6 +241,21 @@ export function subscribeRoom(onStateChange, onOpponentJoined, onOpponentLeft,
       pendingMyUndoSeq = 0;
       if (onUndoResponse) onUndoResponse(accepted);
     }
+
+    // ── Rematch request from opponent ──────────────────────────────────────
+    const rematchReq = d.rematchReq;
+    if (rematchReq && rematchReq.from !== myPlayer && rematchReq.seq > lastSeenRematchReq) {
+      lastSeenRematchReq = rematchReq.seq;
+      if (onRematchRequest) onRematchRequest(rematchReq.seq);
+    }
+
+    // ── Rematch response for our pending request ──────────────────────────
+    const rematchResp = d.rematchResp;
+    if (rematchResp && rematchResp.forSeq === pendingMyRematchSeq && pendingMyRematchSeq > 0) {
+      const accepted = rematchResp.accepted;
+      pendingMyRematchSeq = 0;
+      if (onRematchResponse) onRematchResponse(accepted);
+    }
   });
 }
 
@@ -257,6 +275,24 @@ export async function sendUndoRequest() {
 export async function sendUndoResponse(reqSeq, accepted) {
   if (!roomRef) return;
   await update(roomRef, { undoResp: { forSeq: reqSeq, accepted } });
+}
+
+// ─── Rematch request / response ───────────────────────────────────────────────
+/** Requester: broadcast a rematch request. Returns the seq number. */
+export async function sendRematchRequest() {
+  if (!roomRef) return 0;
+  pendingMyRematchSeq++;
+  await update(roomRef, {
+    rematchReq:  { from: myPlayer, seq: pendingMyRematchSeq },
+    rematchResp: null,
+  });
+  return pendingMyRematchSeq;
+}
+
+/** Responder: reply to a rematch request. */
+export async function sendRematchResponse(reqSeq, accepted) {
+  if (!roomRef) return;
+  await update(roomRef, { rematchResp: { forSeq: reqSeq, accepted } });
 }
 
 // ─── Push game state (after your move/pass) ───────────────────────────────────
@@ -334,4 +370,6 @@ export function leaveRoom() {
   opponentLeftNotified = false;
   lastSeenUndoReq      = 0;
   pendingMyUndoSeq     = 0;
+  lastSeenRematchReq   = 0;
+  pendingMyRematchSeq  = 0;
 }

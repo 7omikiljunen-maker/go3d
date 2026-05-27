@@ -44,6 +44,7 @@ import {
   createRoom, joinRoom, rejoinRoom, subscribeRoom, pushGameState,
   sendChat, subscribeChat, signalLeave, leaveRoom, deleteRoom,
   sendUndoRequest, sendUndoResponse,
+  sendRematchRequest, sendRematchResponse,
   roomCode, myPlayer, isOnline, unflattenBoard,
 } from './multiplayer.js';
 
@@ -440,6 +441,52 @@ function handleUndoRequest(reqSeq) {
   });
 }
 
+// ─── Rematch ─────────────────────────────────────────────────────────────────
+let waitingForRematchResponse = false;
+
+function requestRematch() {
+  if (!isOnline || waitingForRematchResponse) return;
+  waitingForRematchResponse = true;
+  const btn = document.getElementById('overlayRematchBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Waiting…'; }
+  sendRematchRequest();
+}
+
+/** Called on the RESPONDER's side when opponent requests a rematch. */
+function handleRematchRequest(reqSeq) {
+  showConfirm('Opponent wants a rematch. Play again?').then(accepted => {
+    sendRematchResponse(reqSeq, accepted);
+    if (accepted) startRematch();
+  });
+}
+
+/** Called on the REQUESTER's side when opponent responds. */
+function handleRematchResponse(accepted) {
+  waitingForRematchResponse = false;
+  const btn = document.getElementById('overlayRematchBtn');
+  if (btn) { btn.disabled = false; btn.textContent = 'Rematch'; }
+  if (accepted) {
+    startRematch();
+  } else {
+    if (btn) {
+      btn.textContent = 'Declined';
+      setTimeout(() => { btn.textContent = 'Rematch'; }, 2000);
+    }
+  }
+}
+
+/** Both sides call this when a rematch is agreed — reset board, host pushes. */
+async function startRematch() {
+  hideOverlay();
+  clearTerritory();
+  setupBoard();
+  if (myPlayer === 1) {
+    // Host pushes the fresh state so the guest's local board mirrors it
+    await pushGameState({ board, N, current, captures, consecutivePasses, gameOver, koState, lastPlaced });
+  }
+  refreshUI(); refreshHints();
+}
+
 /** Called on the REQUESTER's side when opponent responds. */
 async function handleUndoResponse(accepted) {
   waitingForUndoResponse = false;
@@ -528,6 +575,19 @@ function endGame() {
   showOverlay(captures[0], captures[1], scoringMode, terrForScore, komi);
   // Show overlay undo button only when there is something to undo
   document.getElementById('overlayUndoBtn').style.display = history.length > 0 ? '' : 'none';
+  // Online: show Rematch, rename close button to 'Leave game'. Offline: hide Rematch, keep 'New game'.
+  const rematchBtn = document.getElementById('overlayRematchBtn');
+  const closeBtn   = document.getElementById('overlayClose');
+  if (isOnline) {
+    rematchBtn.style.display = '';
+    rematchBtn.disabled      = false;
+    rematchBtn.textContent   = 'Rematch';
+    waitingForRematchResponse = false;
+    closeBtn.textContent     = 'Leave game';
+  } else {
+    rematchBtn.style.display = 'none';
+    closeBtn.textContent     = 'New game';
+  }
   if (!isOnline) clearStorage();
   track('game_completed', {
     mode: isOnline ? 'online' : playMode,
@@ -634,6 +694,8 @@ document.getElementById('overlayTerrBtn').onclick = () => {
   const visible = toggleTerritory();
   document.getElementById('overlayTerrBtn').textContent = visible ? 'Hide territory' : 'Show territory';
 };
+
+document.getElementById('overlayRematchBtn').onclick = () => requestRematch();
 
 document.getElementById('aiBtn').onclick = () => {
   if (gameOver) return;
@@ -787,7 +849,7 @@ async function doCreateGame() {
     syncModeButtons();
     subscribeChat(handleNewChatMsg);
     refreshUI(); refreshHints();
-  }, handleOpponentLeft, handleUndoRequest, handleUndoResponse);
+  }, handleOpponentLeft, handleUndoRequest, handleUndoResponse, handleRematchRequest, handleRematchResponse);
 }
 
 // ─── Payment gate ─────────────────────────────────────────────────────────────
@@ -933,7 +995,7 @@ async function doJoinGame(code) {
   sessionStorage.setItem('go3d-online-room',   code);
   sessionStorage.setItem('go3d-online-player', '2');
 
-  subscribeRoom(applyOpponentState, null, handleOpponentLeft, handleUndoRequest, handleUndoResponse);
+  subscribeRoom(applyOpponentState, null, handleOpponentLeft, handleUndoRequest, handleUndoResponse, handleRematchRequest, handleRematchResponse);
   subscribeChat(handleNewChatMsg);
   refreshUI(); refreshHints();
   return true;
@@ -1201,7 +1263,7 @@ async function tryRejoinOnlineGame() {
       syncModeButtons();
       subscribeChat(handleNewChatMsg);
       refreshUI(); refreshHints();
-    }, handleOpponentLeft, handleUndoRequest, handleUndoResponse);
+    }, handleOpponentLeft, handleUndoRequest, handleUndoResponse, handleRematchRequest, handleRematchResponse);
   } else {
     // Game was in progress — enter online mode FIRST so CSS is correct
     // before setupBoard/applyOpponentState call refreshUI internally
@@ -1210,7 +1272,7 @@ async function tryRejoinOnlineGame() {
     syncModeButtons();
     setupBoard();
     applyOpponentState(result.data);
-    subscribeRoom(applyOpponentState, null, handleOpponentLeft, handleUndoRequest, handleUndoResponse);
+    subscribeRoom(applyOpponentState, null, handleOpponentLeft, handleUndoRequest, handleUndoResponse, handleRematchRequest, handleRematchResponse);
     subscribeChat(handleNewChatMsg);
     refreshUI(); refreshHints();
   }
