@@ -1,6 +1,6 @@
 # Go 3D — To-Do List
 
-Last updated: 2026-05-27
+Last updated: 2026-05-27 (session 2)
 
 ---
 
@@ -21,7 +21,10 @@ Last updated: 2026-05-27
 
 - [ ] **19×19 board** — adds "real Go" size; AI would need to be limited to 1-ply or random to stay fast; 3D 19³ is massive so might be 2D-only layer view
 - [x] **Difficulty levels** — Easy / Medium / Hard; shipped & verified 2026-05-26
-- [ ] **Scoring detail panel** — after game ends, show territory breakdown per layer or a table (Black territory, White territory, Komi, Captures → final score); currently just totals in overlay
+- [x] **Scoring detail panel** — shipped 2026-05-27 — visual territory painting at game end + always-show Score line in overlay (captures + territory + komi → final). Per-layer breakdown still possible if wanted.
+- [x] **Challenge link** — shipped 2026-05-27 — `?join=CODE` URLs auto-join opponent's game on click; Copy invite link button in waiting screen
+- [x] **Online rematch** — shipped 2026-05-27 — Rematch + Leave game buttons replace 'New game' in online overlay; opponent gets accept/decline dialog
+- [x] **Auto-komi per board size** — shipped 2026-05-27 — 1.5 / 3.5 / 5.5 / 6.5 / 7.5 for 3³ / 5³ / 7³ / 9³ / 11³
 
 ---
 
@@ -38,7 +41,27 @@ Last updated: 2026-05-27
 
 ---
 
-## ✅ Done (recent — 2026-05-27 session)
+## ✅ Done (recent — 2026-05-27 session 2)
+
+### Features shipped
+- [x] **Territory painting** — colored markers at every owned empty intersection at game end; theme-aware colors (deep blue + amber in light mode, blue + light gray in dark mode); respects layer visibility toggles
+- [x] **Floating score card** — game-over overlay redesigned as compact top-right card (position: fixed, no backdrop) so the painted board is fully visible behind it
+- [x] **Score line shown for all modes** — captures-only mode used to omit a final-score summary; now always shown
+- [x] **Auto-komi per board size** — 1.5 / 3.5 / 5.5 / 6.5 / 7.5 for 3³ / 5³ / 7³ / 9³ / 11³ — applied at every new game
+- [x] **Challenge link** — `go3dgame.com/?join=CODE` URLs auto-join the room with zero friction (anon auth + room state in one shot)
+- [x] **Copy invite link button** — appears in waiting screen, copies the challenge URL to clipboard
+- [x] **Online rematch** — Rematch + Leave game buttons replace 'New game' in online overlay; opponent gets an Accept/Decline dialog; on accept, board resets in the same room and host pushes the fresh state
+- [x] **Satellite halved in size** — 2.5 → 1.25 (was too dominant)
+
+### Bugs squashed
+- [x] `history.replaceState()` TypeError — local `history` import from board.js (undo stack array) shadowed `window.history`; fixed by using `window.history` explicitly. This crashed the entire startup IIFE silently, making the challenge link drop guests into offline games for ~1 hour of debugging.
+- [x] Service worker `skipWaiting: true` + `clientsClaim: true` so future updates activate immediately (no more "close all tabs to update" dance)
+- [x] `?join=` URLs added to `navigateFallbackDenylist` so query string is preserved through the SW
+- [x] `joinRoom()` wrapped in try/catch in `doJoinGame` — Firebase errors no longer silently drop the user into an offline game
+
+---
+
+## ✅ Done (earlier — 2026-05-27 session 1)
 
 ### Polish + features
 - [x] Scrollable chat history with thin aesthetic scrollbar + Android touch-scroll fix
