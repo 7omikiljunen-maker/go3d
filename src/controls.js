@@ -108,9 +108,9 @@ export function attachTouchControls(canvas, onClickAt) {
 
 // ─── Auto-rotate ─────────────────────────────────────────────────────────────
 /** Call each frame with delta-time when auto-rotate is enabled.
- *  Pauses for 2 s after any manual drag so the view doesn't snap away. */
+ *  Pauses for 1 s after any manual drag so the view doesn't snap away. */
 export function autoRotateTick(dt) {
-  if (dragging || Date.now() - lastDragTime < 2000) return;
+  if (dragging || Date.now() - lastDragTime < 1000) return;
   theta += dt * 0.10;   // one full orbit ≈ 63 s
   updateCamera();
 }
