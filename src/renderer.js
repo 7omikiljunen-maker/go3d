@@ -344,6 +344,7 @@ export function addStoneMesh(x, y, z, color) {
   const targetY = OFF + y * SP;
   m.position.set(OFF + x*SP, targetY + 4, OFF + z*SP);
   m.scale.set(0.1, 0.1, 0.1); m.castShadow = true;
+  m.visible = layerVisible[y];   // respect any user-hidden layers
   stonesGroup.add(m); stoneMeshMap[key] = m;
   dropAnimating.push({ mesh: m, targetPos: new THREE.Vector3(OFF + x*SP, targetY, OFF + z*SP), t: 0 });
 
@@ -357,6 +358,7 @@ export function addStoneMesh(x, y, z, color) {
   const ring = new THREE.Mesh(makeMarkerGeo(), ringMat);
   ring.position.set(OFF + x*SP, targetY + 0.01, OFF + z*SP);
   ring.rotation.x = -Math.PI / 2;
+  ring.visible = layerVisible[y];
   markerGroup.add(ring); lastMarker = ring;
 }
 
