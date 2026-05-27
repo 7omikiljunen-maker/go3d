@@ -77,7 +77,7 @@ function buildStarfield() {
     { count: 350, size: 0.11,  baseOpacity: 0.90, twinkles: false },
     { count: 120, size: 0.28,  baseOpacity: 1.00, twinkles: true  },
     { count:  40, size: 0.50,  baseOpacity: 1.00, twinkles: true  },
-    { count:  10, size: 0.85,  baseOpacity: 1.00, twinkles: true  },
+    { count:  10, size: 0.85,  baseOpacity: 1.00, twinkles: 'beacon' },
   ];
 
   // Mostly white, occasionally tinted blue/yellow/red — like real stars
@@ -123,6 +123,7 @@ function buildStarfield() {
       vertexColors: true,
     });
     mat.userData.baseOpacity  = cfg.baseOpacity;
+    mat.userData.baseSize     = cfg.size;
     mat.userData.twinklePhase = Math.random() * Math.PI * 2;
     mat.userData.twinkles     = cfg.twinkles;
 
@@ -433,15 +434,25 @@ export function startRenderLoop() {
       }
     }
 
-    // Slow starfield twinkle — only the bright foreground layers shimmer
+    // Starfield twinkle — beacon stars flicker dramatically; mid-size shimmer gently
     if (starfieldGroup && starfieldGroup.visible) {
       const t = clock.elapsedTime;
       for (const child of starfieldGroup.children) {
-        if (child.isPoints && child.material.userData.twinkles) {
-          const mat   = child.material;
-          const base  = mat.userData.baseOpacity ?? mat.opacity;
-          const phase = mat.userData.twinklePhase ?? 0;
-          // Subtle ±15% modulation over ~7 s
+        if (!child.isPoints) continue;
+        const mat   = child.material;
+        const phase = mat.userData.twinklePhase ?? 0;
+
+        if (mat.userData.twinkles === 'beacon') {
+          // Multi-frequency shimmer: fast flutter + medium pulse + slow breathe
+          const shimmer = 0.45 * Math.sin(t * 2.1 + phase)
+                        + 0.35 * Math.sin(t * 6.7 + phase * 1.3)
+                        + 0.20 * Math.sin(t * 0.5 + phase * 0.5);
+          const norm  = (shimmer + 1) * 0.5;          // 0 … 1
+          mat.opacity = 0.25 + norm * 0.75;            // 0.25 → 1.0
+          mat.size    = mat.userData.baseSize * (0.65 + norm * 0.70); // ×0.65 → ×1.35
+        } else if (mat.userData.twinkles === true) {
+          // Subtle ±15% opacity shimmer for the two mid-size bright layers
+          const base = mat.userData.baseOpacity ?? mat.opacity;
           mat.opacity = base * (0.85 + 0.15 * Math.sin(t * 0.9 + phase));
         }
       }
