@@ -86,16 +86,18 @@ onAuthChange(user => {
 });
 
 // ─── Handle redirect sign-in (mobile) ────────────────────────────────────────
-resolveRedirect().then(result => {
-  if (!result) return;                     // no pending redirect
-  currentUser = result.user;
-  updateAuthUI();
-  if (sessionStorage.getItem('pendingCreateGame')) {
+// Only call getRedirectResult when we actually started a redirect — avoids
+// Firebase Auth showing its own "There was an error" toast on every page load
+// when there is no pending redirect to resume.
+if (sessionStorage.getItem('pendingCreateGame')) {
+  resolveRedirect().then(result => {
+    if (!result) return;
+    currentUser = result.user;
+    updateAuthUI();
     sessionStorage.removeItem('pendingCreateGame');
-    // resume create-game flow after redirect sign-in
     onlineModal.style.display = 'flex';    // re-open the online modal
-  }
-}).catch(() => {});
+  }).catch(() => { sessionStorage.removeItem('pendingCreateGame'); });
+}
 
 // ─── Canvas & renderer init ───────────────────────────────────────────────────
 const canvas = document.getElementById('c');
