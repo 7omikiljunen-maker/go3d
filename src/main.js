@@ -1223,19 +1223,41 @@ async function tryRejoinOnlineGame() {
 setupBoard();
 startRenderLoop();
 
+// Temporary diagnostic banner — surfaces the auto-join state visibly
+function showDebugBanner(msg, isError = false) {
+  const b = document.createElement('div');
+  b.style.cssText = `position:fixed;top:10px;left:50%;transform:translateX(-50%);
+    background:${isError ? '#a33' : '#363'};color:#fff;padding:8px 16px;
+    border-radius:8px;z-index:9999;font:12px sans-serif;max-width:90vw;
+    box-shadow:0 4px 16px rgba(0,0,0,0.4)`;
+  b.textContent = msg;
+  document.body.appendChild(b);
+  setTimeout(() => b.remove(), 8000);
+}
+
 (async () => {
   // Challenge link: go3dgame.com/?join=XXXXXX → skip all modals, go straight in
-  const autoCode = new URLSearchParams(window.location.search).get('join');
-  if (autoCode) {
-    history.replaceState({}, '', window.location.pathname); // clean URL
-    await doJoinGame(autoCode.toUpperCase());
-    return;
-  }
+  try {
+    const search = window.location.search;
+    const autoCode = new URLSearchParams(search).get('join');
+    console.log('[go3d] startup — search:', search, 'autoCode:', autoCode);
+    showDebugBanner(`startup search="${search}" autoCode="${autoCode || 'null'}"`);
 
-  const rejoined = await tryRejoinOnlineGame();
-  if (!rejoined) {
-    // No online session — restore saved local game if one exists
-    const hadSave = loadFromStorage();
-    if (hadSave) restoreFromSave();
+    if (autoCode) {
+      history.replaceState({}, '', window.location.pathname);
+      showDebugBanner(`Auto-joining ${autoCode}…`);
+      const ok = await doJoinGame(autoCode.toUpperCase());
+      showDebugBanner(`doJoinGame returned: ${ok}`, !ok);
+      return;
+    }
+
+    const rejoined = await tryRejoinOnlineGame();
+    if (!rejoined) {
+      const hadSave = loadFromStorage();
+      if (hadSave) restoreFromSave();
+    }
+  } catch (err) {
+    console.error('[go3d] startup error:', err);
+    showDebugBanner(`STARTUP ERROR: ${err && err.message}`, true);
   }
 })();
