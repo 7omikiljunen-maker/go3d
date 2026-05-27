@@ -22,6 +22,10 @@ export let intersectionPoints = [];
 const dropAnimating  = [];  // stones dropping in
 const exitAnimating  = [];  // captured stones flying out
 
+// Per-frame callback (used for auto-rotate, injected from main.js)
+let _onFrame = null;
+export function setOnFrame(fn) { _onFrame = fn; }
+
 // ─── Hint materials ───────────────────────────────────────────────────────────
 const hintMats = [
   new THREE.MeshPhongMaterial({ color: 0x2255ff, opacity: 0.16, transparent: true, depthWrite: false }),
@@ -419,6 +423,8 @@ export function startRenderLoop() {
   function animate() {
     requestAnimationFrame(animate);
     const dt = clock.getDelta();
+
+    if (_onFrame) _onFrame(dt);
 
     // Stone drop animation
     for (let i = dropAnimating.length - 1; i >= 0; i--) {

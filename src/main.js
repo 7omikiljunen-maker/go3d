@@ -21,13 +21,14 @@ import {
   buildGrid, buildDots, clearScene,
   addStoneMesh, removeStonesMesh, rebuildStoneMeshes,
   updateHints, showTerritory, syncLayerVisibility,
-  setSceneBg,
+  setSceneBg, setOnFrame,
   camera,
 } from './renderer.js';
 
 import {
   setRadius, updateCamera,
   attachMouseControls, attachTouchControls, pickIntersection,
+  autoRotateTick,
 } from './controls.js';
 
 import {
@@ -859,6 +860,20 @@ document.getElementById('themeBtn').onclick = () => {
   applyTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light');
 };
 
+// ─── Auto-rotate toggle ───────────────────────────────────────────────────────
+let rotateMode = localStorage.getItem('go3d-rotate') === '1';
+
+function syncRotateBtn() {
+  document.getElementById('rotateBtn').textContent = rotateMode ? '🔄 On' : '🔄 Off';
+}
+document.getElementById('rotateBtn').onclick = () => {
+  rotateMode = !rotateMode;
+  localStorage.setItem('go3d-rotate', rotateMode ? '1' : '0');
+  syncRotateBtn();
+};
+
+setOnFrame(dt => { if (rotateMode) autoRotateTick(dt); });
+
 // ─── PWA install prompt ───────────────────────────────────────────────────────
 let installPrompt = null;
 const installRow    = document.getElementById('installRow');
@@ -910,6 +925,7 @@ installBanner.querySelector('#installBannerDismiss').onclick = () => {
 const savedTheme = localStorage.getItem('go3d-theme') || 'dark';
 applyTheme(savedTheme);
 syncSoundBtn();
+syncRotateBtn();
 
 // Restore saved AI difficulty
 const savedDifficulty = localStorage.getItem('go3d-difficulty');

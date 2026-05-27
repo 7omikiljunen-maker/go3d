@@ -7,6 +7,7 @@ let theta = Math.PI / 4, phi = Math.PI / 4;
 export let radius = 16;
 
 let dragging = false, lastX = 0, lastY = 0, dragDist = 0;
+let lastDragTime = 0;
 
 export function setRadius(r) { radius = r; }
 
@@ -23,6 +24,7 @@ export function updateCamera() {
 export function attachMouseControls(canvas, onClickAt) {
   canvas.addEventListener('mousedown', e => {
     dragging = true; lastX = e.clientX; lastY = e.clientY; dragDist = 0;
+    lastDragTime = Date.now();
   });
   window.addEventListener('mouseup', e => {
     if (dragging && dragDist < 6) onClickAt(e.clientX, e.clientY);
@@ -60,6 +62,7 @@ export function attachTouchControls(canvas, onClickAt) {
       dragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; dragDist = 0;
       wasMultiTouch = false;
       lastPinchDist = null;
+      lastDragTime = Date.now();
     } else {
       // Two or more fingers — never a tap, start pinch tracking
       wasMultiTouch = true;
@@ -101,6 +104,15 @@ export function attachTouchControls(canvas, onClickAt) {
       lastPinchDist = null;
     }
   });
+}
+
+// ─── Auto-rotate ─────────────────────────────────────────────────────────────
+/** Call each frame with delta-time when auto-rotate is enabled.
+ *  Pauses for 2 s after any manual drag so the view doesn't snap away. */
+export function autoRotateTick(dt) {
+  if (dragging || Date.now() - lastDragTime < 2000) return;
+  theta += dt * 0.10;   // one full orbit ≈ 63 s
+  updateCamera();
 }
 
 // ─── Raycasting ──────────────────────────────────────────────────────────────
