@@ -863,6 +863,16 @@ document.getElementById('createGameBtn').onclick = async () => {
   await doCreateGame();
 };
 
+// ─── Copy invite link ─────────────────────────────────────────────────────────
+document.getElementById('copyLinkBtn').onclick = () => {
+  const link = `https://go3dgame.com/?join=${roomCode}`;
+  navigator.clipboard.writeText(link).then(() => {
+    const btn = document.getElementById('copyLinkBtn');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.textContent = '🔗 Copy invite link'; }, 2000);
+  });
+};
+
 // ─── Cancel waiting ───────────────────────────────────────────────────────────
 document.getElementById('cancelWaitBtn').onclick = () => {
   deleteRoom(); // no opponent joined yet — delete immediately
@@ -875,16 +885,8 @@ document.getElementById('cancelWaitBtn').onclick = () => {
   setupBoard();
 };
 
-// ─── Join game ────────────────────────────────────────────────────────────────
-document.getElementById('joinGameBtn').onclick = async () => {
-  const code = document.getElementById('joinCodeInput').value.trim();
-  if (code.length !== 6) { joinError.textContent = 'Code must be 6 characters'; return; }
-  joinError.textContent = '';
-
-  const btn = document.getElementById('joinGameBtn');
-  btn.disabled = true;
-  btn.textContent = 'Joining…';
-
+// ─── Join game (shared logic for button + challenge link auto-join) ───────────
+async function doJoinGame(code) {
   // Firebase rules require all writes to be authenticated. Guests don't need
   // a Google account, but they do need a UID — sign in anonymously if needed.
   if (!currentUser) {
@@ -892,26 +894,25 @@ document.getElementById('joinGameBtn').onclick = async () => {
     catch (err) {
       track('join_game_failed', { error: 'anon_auth_failed' });
       joinError.textContent = 'Could not connect — please try again';
-      btn.disabled = false;
-      btn.textContent = 'Join game →';
-      return;
+      document.getElementById('joinCodeInput').value = code;
+      onlineModal.style.display = 'flex';
+      return false;
     }
   }
 
   track('join_game_attempted');
   const result = await joinRoom(code);
 
-  btn.disabled = false;
-  btn.textContent = 'Join game →';
-
   if (!result.ok) {
     track('join_game_failed', { error: result.error });
-    joinError.textContent = result.error;
-    return;
+    joinError.textContent = result.error || 'Game not found or already started';
+    document.getElementById('joinCodeInput').value = code;
+    onlineModal.style.display = 'flex';
+    return false;
   }
   track('room_joined', { board_size: result.N });
 
-  // Apply host's board state
+  // Apply host's board state and enter online mode
   setN(result.N);
   setupBoard();
   applyOpponentState(result.data);
@@ -926,6 +927,19 @@ document.getElementById('joinGameBtn').onclick = async () => {
   subscribeRoom(applyOpponentState, null, handleOpponentLeft, handleUndoRequest, handleUndoResponse);
   subscribeChat(handleNewChatMsg);
   refreshUI(); refreshHints();
+  return true;
+}
+
+document.getElementById('joinGameBtn').onclick = async () => {
+  const code = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+  if (code.length !== 6) { joinError.textContent = 'Code must be 6 characters'; return; }
+  joinError.textContent = '';
+  const btn = document.getElementById('joinGameBtn');
+  btn.disabled = true;
+  btn.textContent = 'Joining…';
+  await doJoinGame(code);
+  btn.disabled = false;
+  btn.textContent = 'Join game →';
 };
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
@@ -1201,6 +1215,14 @@ setupBoard();
 startRenderLoop();
 
 (async () => {
+  // Challenge link: go3dgame.com/?join=XXXXXX → skip all modals, go straight in
+  const autoCode = new URLSearchParams(window.location.search).get('join');
+  if (autoCode) {
+    history.replaceState({}, '', window.location.pathname); // clean URL
+    await doJoinGame(autoCode.toUpperCase());
+    return;
+  }
+
   const rejoined = await tryRejoinOnlineGame();
   if (!rejoined) {
     // No online session — restore saved local game if one exists
