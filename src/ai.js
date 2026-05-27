@@ -524,12 +524,26 @@ function mctsMove(player) {
 
 // ─── Main AI entry point ──────────────────────────────────────────────────────
 export function aiMove(player) {
-  const moves = legalMoves(player);
+  // Debug instrumentation — narrow down where the null is being read
+  let moves;
+  try {
+    moves = legalMoves(player);
+  } catch (e) {
+    throw new Error('[aiMove] legalMoves threw: ' + (e && e.message));
+  }
+  if (moves == null) throw new Error('[aiMove] legalMoves returned ' + moves);
   if (moves.length === 0) return null;
 
   // Hard: MCTS on small boards (enough iterations to be strong),
   //       minimax on large boards (too few MCTS iterations to beat a good eval function)
-  if (aiDifficulty === 'hard' && N <= 5) return mctsMove(player);
+  if (aiDifficulty === 'hard' && N <= 5) {
+    try {
+      return mctsMove(player);
+    } catch (e) {
+      throw new Error('[aiMove] mctsMove threw: ' + (e && e.message) +
+                      '\nInner stack: ' + (e && e.stack));
+    }
+  }
 
   // Easy: 40 % of moves are completely random — makes the AI feel genuinely weak
   if (aiDifficulty === 'easy' && Math.random() < 0.4) {
