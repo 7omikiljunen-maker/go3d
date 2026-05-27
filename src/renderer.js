@@ -203,19 +203,12 @@ function buildStarfield() {
   }
 
   // ── SATELLITE — tiny dot crossing the sky occasionally ──────────────────────
-  const satBuf = new Float32Array(6 * 3);
-  const satLineGeo = new THREE.BufferGeometry();
-  satLineGeo.setAttribute('position', new THREE.BufferAttribute(satBuf, 3));
-  satLineGeo.setDrawRange(0, 0);
-  const satTrail = new THREE.Line(satLineGeo,
-    new THREE.LineBasicMaterial({ color: 0xddeeff, transparent: true, opacity: 0, depthWrite: false, fog: false }));
   const satDot = new THREE.Mesh(
     new THREE.SphereGeometry(0.14, 4, 4),
     new THREE.MeshBasicMaterial({ color: 0xeef6ff, transparent: true, opacity: 0, depthWrite: false, fog: false }));
-  group.add(satTrail);
   group.add(satDot);
   group.userData.sat = {
-    dot: satDot, trail: satTrail, buf: satBuf, geo: satLineGeo,
+    dot: satDot,
     tmp: new THREE.Vector3(),
     active: false, progress: 0, duration: 0,
     start: new THREE.Vector3(), end: new THREE.Vector3(),
@@ -501,11 +494,9 @@ export function startRenderLoop() {
         } else {
           sat.progress += dt / sat.duration;
           if (sat.progress >= 1) {
-            // Crossing done — hide everything, wait before next pass
-            sat.active              = false;
-            sat.dot.material.opacity   = 0;
-            sat.trail.material.opacity = 0;
-            sat.geo.setDrawRange(0, 0);
+            // Crossing done — hide dot, wait before next pass
+            sat.active             = false;
+            sat.dot.material.opacity = 0;
             sat.nextSpawn = 45 + Math.random() * 75;  // reappear in 45–120 s
           } else {
             // Current position — lerp then project onto sphere surface
@@ -516,16 +507,6 @@ export function startRenderLoop() {
             const fade = sat.progress < 0.08 ? sat.progress / 0.08
                        : sat.progress > 0.92 ? (1 - sat.progress) / 0.08 : 1;
             sat.dot.material.opacity = fade;
-
-            // Trail — 6 points, each 4% of journey behind the head
-            for (let k = 0; k < 6; k++) {
-              sat.tmp.lerpVectors(sat.start, sat.end, Math.max(0, sat.progress - k * 0.04))
-                     .normalize().multiplyScalar(92);
-              sat.buf[k*3] = sat.tmp.x; sat.buf[k*3+1] = sat.tmp.y; sat.buf[k*3+2] = sat.tmp.z;
-            }
-            sat.geo.attributes.position.needsUpdate = true;
-            sat.geo.setDrawRange(0, Math.min(6, Math.max(1, Math.ceil(sat.progress / 0.04))));
-            sat.trail.material.opacity = fade * 0.4;
           }
         }
       }
