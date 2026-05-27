@@ -901,7 +901,16 @@ async function doJoinGame(code) {
   }
 
   track('join_game_attempted');
-  const result = await joinRoom(code);
+  let result;
+  try {
+    result = await joinRoom(code);
+  } catch (err) {
+    track('join_game_failed', { error: 'firebase_error' });
+    joinError.textContent = 'Could not connect — please try again';
+    document.getElementById('joinCodeInput').value = code;
+    onlineModal.style.display = 'flex';
+    return false;
+  }
 
   if (!result.ok) {
     track('join_game_failed', { error: result.error });

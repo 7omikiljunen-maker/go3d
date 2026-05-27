@@ -19,6 +19,7 @@ export default defineConfig({
         // Don't intercept Firebase / Google API calls — let them go to network
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [
+          /[?&]join=/,           // challenge links — bypass cache so ?join= param is preserved
           /^\/api\//,
           /firebasedatabase\.app/,
           /firebaseapp\.com/,
