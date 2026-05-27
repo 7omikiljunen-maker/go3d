@@ -139,9 +139,35 @@ function refreshHints() {
 
 function refreshUI() {
   updateUI(current, captures, isComputerTurn);
-  updateAiBtn(gameOver, playMode, current);
+  updateAiBtn(gameOver, playMode, current, automoveTimer !== null);
   // Disable undo only while waiting for the opponent's undo response
   updateUndoBtn(history.length, waitingForUndoResponse);
+}
+
+// ─── Automove (AI plays automatically in PvC / CvC) ──────────────────────────
+let automoveEnabled = localStorage.getItem('go3d-automove') !== '0'; // default ON
+let automoveTimer   = null;
+
+function cancelAutoMove() {
+  if (automoveTimer) {
+    clearTimeout(automoveTimer);
+    automoveTimer = null;
+  }
+}
+
+function scheduleAutoMove() {
+  cancelAutoMove();
+  if (!automoveEnabled || gameOver || isOnline) return;
+  if (!isComputerTurn()) return;
+  // PvC: short delay so the player sees their own move land. CvC: slower so
+  // it's watchable as the two AIs play through.
+  const delay = playMode === 'cvc' ? 1500 : 600;
+  automoveTimer = setTimeout(() => {
+    automoveTimer = null;
+    refreshUI();              // button text flips from "Pause" back to default
+    doAiMove();
+  }, delay);
+  refreshUI();                // button immediately shows "⏸ Pause auto"
 }
 
 // ─── Sync UI button active states ────────────────────────────────────────────
@@ -252,6 +278,8 @@ async function tryPlace(x, y, z) {
     updateLastMoveAt(Date.now());   // reset idle timer locally
     await pushGameState({ board, N, current, captures, consecutivePasses, gameOver, koState, lastPlaced });
   }
+  // After a local move, if the next turn is the AI's, chain an automove
+  if (!isOnline && !gameOver && isComputerTurn()) scheduleAutoMove();
   return true;
 }
 
@@ -362,6 +390,7 @@ function handleUndo() {
   if (isOnline) { requestOnlineUndo(); return; }
 
   // Local undo (offline modes, including post-game)
+  cancelAutoMove();     // user wants to study — don't fire any queued AI move
   const wasOver = gameOver; // undoMove() clears gameOver; capture it first
   if (!undoMove()) return;
   rebuildStoneMeshes(lastPlaced);
@@ -369,6 +398,9 @@ function handleUndo() {
   if (wasOver) hideOverlay();
   saveToStorage();
   refreshUI(); refreshHints();
+  // Note: we deliberately do NOT re-schedule an automove after undo. If the
+  // undo leaves it on an AI turn, the button shows "Computer move ▶" so the
+  // player can advance manually when ready. Keep undoing to step further back.
 }
 
 // ─── Online undo — request/response ──────────────────────────────────────────
@@ -430,14 +462,17 @@ async function doAiMove() {
   const move = aiMove(current);
 
   if (isHard) {
-    aiBtn.textContent = 'Computer move ▶';
     aiBtn.disabled = false;
+    // Reset textContent so refreshUI/updateAiBtn will set the proper label
+    aiBtn.textContent = '';
   }
 
   if (!move) {
     const over = doPass();
     if (over) { endGame(); return; }
     refreshUI(); refreshHints();
+    // Even on a pass, the next turn might also be AI (CvC) — keep the chain alive
+    if (!isOnline && !gameOver && isComputerTurn()) scheduleAutoMove();
     return;
   }
   tryPlace(move[0], move[1], move[2]);
@@ -446,6 +481,7 @@ async function doAiMove() {
 // ─── End game ────────────────────────────────────────────────────────────────
 function endGame() {
   setGameOver(true);
+  cancelAutoMove();
   updateHints(current, true, isComputerTurn, isLegal, koState);
 
   let terrResult = { black: 0, white: 0, neutral: 0 };
@@ -466,6 +502,7 @@ function endGame() {
 
 // ─── Setup / reset ───────────────────────────────────────────────────────────
 function setupBoard() {
+  cancelAutoMove();        // any pending move from the previous game is stale
   clearScene();
   initBoard();
   if (!isOnline) clearStorage();
@@ -481,6 +518,8 @@ function setupBoard() {
   syncScoringBtn();
   refreshUI(); refreshHints();
   hideOverlay();
+  // CvC starts with AI on move 1; kick off the chain if automove is on.
+  if (!isOnline && isComputerTurn()) scheduleAutoMove();
 }
 
 // ─── Restore visual state after loadFromStorage ───────────────────────────────
@@ -536,6 +575,8 @@ document.getElementById('passBtn').onclick = async () => {
   const over = doPass();
   if (over) { endGame(); return; }
   refreshUI(); refreshHints();
+  // Human passed locally → if it's now the AI's turn, chain a move
+  if (!isOnline && !gameOver && isComputerTurn()) scheduleAutoMove();
 };
 
 document.getElementById('undoBtn').onclick        = handleUndo;
@@ -543,6 +584,17 @@ document.getElementById('overlayUndoBtn').onclick = handleUndo;
 
 document.getElementById('aiBtn').onclick = () => {
   if (gameOver) return;
+  // If an automove is queued, this button acts as Pause — cancel the pending
+  // move and turn off automove for the rest of the game (toggle in Settings
+  // to re-enable, or just click again as a manual "Computer move ▶").
+  if (automoveTimer) {
+    cancelAutoMove();
+    automoveEnabled = false;
+    localStorage.setItem('go3d-automove', '0');
+    syncAutomoveBtn();
+    refreshUI();
+    return;
+  }
   if (playMode === 'cvc' || (playMode === 'pvc' && current === 2)) doAiMove();
 };
 
@@ -935,6 +987,24 @@ document.getElementById('rotateBtn').onclick = () => {
   syncRotateBtn();
 };
 
+// ─── Automove toggle ─────────────────────────────────────────────────────────
+function syncAutomoveBtn() {
+  document.getElementById('automoveBtn').textContent =
+    automoveEnabled ? '⚡ On' : '⚡ Off';
+}
+document.getElementById('automoveBtn').onclick = () => {
+  automoveEnabled = !automoveEnabled;
+  localStorage.setItem('go3d-automove', automoveEnabled ? '1' : '0');
+  syncAutomoveBtn();
+  if (!automoveEnabled) {
+    cancelAutoMove();
+    refreshUI();
+  } else if (!gameOver && !isOnline && isComputerTurn()) {
+    // Toggling on while it's already the AI's turn — kick off a move
+    scheduleAutoMove();
+  }
+};
+
 // Pause auto-rotate while any modal or full-screen overlay is open — the user
 // is reading text and wants the board behind to stay put for visual context.
 function anyOverlayOpen() {
@@ -1006,6 +1076,7 @@ const savedTheme = localStorage.getItem('go3d-theme') || 'dark';
 applyTheme(savedTheme);
 syncSoundBtn();
 syncRotateBtn();
+syncAutomoveBtn();
 
 // Restore saved AI difficulty
 const savedDifficulty = localStorage.getItem('go3d-difficulty');

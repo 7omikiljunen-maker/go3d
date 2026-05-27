@@ -29,12 +29,19 @@ export function updateUI(current, captures, isComputerTurn) {
 }
 
 // ─── Button visibility ────────────────────────────────────────────────────────
-export function updateAiBtn(gameOver, playMode, current) {
+export function updateAiBtn(gameOver, playMode, current, automovePending = false) {
   const btn = document.getElementById('aiBtn');
   if (gameOver) { btn.style.display = 'none'; return; }
-  if (playMode === 'cvc') { btn.style.display = 'inline-block'; return; }
-  if (playMode === 'pvc' && current === 2) { btn.style.display = 'inline-block'; return; }
-  btn.style.display = 'none';
+  const visible =
+    playMode === 'cvc' ||
+    (playMode === 'pvc' && current === 2);
+  btn.style.display = visible ? 'inline-block' : 'none';
+  if (!visible) return;
+  // Reset disabled state when not actively computing (doAiMove handles 'Thinking…')
+  if (btn.textContent !== 'Thinking…') {
+    btn.textContent = automovePending ? '⏸ Pause auto' : 'Computer move ▶';
+    btn.disabled = false;
+  }
 }
 
 export function updateUndoBtn(historyLen, forceDisabled) {
