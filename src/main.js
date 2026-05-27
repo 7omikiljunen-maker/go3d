@@ -167,6 +167,10 @@ function scheduleAutoMove() {
   cancelAutoMove();
   if (!automoveEnabled || automovePaused || gameOver || isOnline) return;
   if (!isComputerTurn()) return;
+  // Don't kick off auto-play while the user is configuring in a modal — they
+  // chose a board size / mode in Settings and we shouldn't start moving until
+  // they've closed Settings. closeSettings() calls scheduleAutoMove() again.
+  if (anyOverlayOpen()) return;
   // PvC: short delay so the player sees their own move land. CvC: slower so
   // it's watchable as the two AIs play through.
   const delay = playMode === 'cvc' ? 1500 : 600;
@@ -956,7 +960,13 @@ window.addEventListener('resize', resize);
 const settingsModal = document.getElementById('settings-modal');
 
 function openSettings()  { settingsModal.style.display = 'block'; settingsModal.scrollTop = 0; }
-function closeSettings() { settingsModal.style.display = 'none'; }
+function closeSettings() {
+  settingsModal.style.display = 'none';
+  // If the user changed board size / mode inside Settings (which calls
+  // setupBoard), the scheduled automove was deferred while the modal was
+  // open. Now that it's closed, kick it off if appropriate.
+  if (!isOnline && !gameOver && isComputerTurn()) scheduleAutoMove();
+}
 
 document.getElementById('gearBtn').onclick     = openSettings;
 document.getElementById('settingsClose').onclick = closeSettings;
