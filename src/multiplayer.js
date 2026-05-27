@@ -176,7 +176,15 @@ export function subscribeRoom(onStateChange, onOpponentJoined, onOpponentLeft,
                                onUndoRequest, onUndoResponse) {
   if (!roomRef) return;
   unsubRoom = onValue(roomRef, snap => {
-    if (!snap.exists()) return;
+    if (!snap.exists()) {
+      // Room was deleted — opponent intentionally left (signalLeave deletes after 3 s)
+      if (onOpponentLeft && !opponentLeftNotified) {
+        opponentLeftNotified = true;
+        if (opponentLeftTimer) { clearTimeout(opponentLeftTimer); opponentLeftTimer = null; }
+        onOpponentLeft(gameStarted || myPlayer === 2);
+      }
+      return;
+    }
     const d = snap.val();
 
     // Host: notify once when guest arrives
