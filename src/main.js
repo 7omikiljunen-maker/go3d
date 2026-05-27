@@ -409,10 +409,14 @@ function handleUndo() {
   syncLayerVisibility(lastPlaced);
   if (wasOver) hideOverlay();
   saveToStorage();
+  // If automove is enabled and undo landed us on an AI turn, set paused so
+  // the button reads "▶ Resume auto" — making it clear automove is just
+  // suspended for study, not turned off. Click Resume to continue, or keep
+  // undoing further back.
+  if (automoveEnabled && !gameOver && isComputerTurn()) {
+    automovePaused = true;
+  }
   refreshUI(); refreshHints();
-  // Note: we deliberately do NOT re-schedule an automove after undo. If the
-  // undo leaves it on an AI turn, the button shows "Computer move ▶" so the
-  // player can advance manually when ready. Keep undoing to step further back.
 }
 
 // ─── Online undo — request/response ──────────────────────────────────────────
