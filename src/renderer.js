@@ -216,10 +216,34 @@ function buildStarfield() {
     group.add(sprite);
   }
 
-  // ── SATELLITE — tiny dot crossing the sky occasionally ──────────────────────
-  const satDot = new THREE.Mesh(
-    new THREE.SphereGeometry(0.14, 4, 4),
-    new THREE.MeshBasicMaterial({ color: 0xeef6ff, transparent: true, opacity: 0, depthWrite: false, fog: false }));
+  // ── SATELLITE — glowing dot crossing the sky occasionally ───────────────────
+  // Use a soft radial-gradient sprite so it reads as a point of light, not a
+  // solid disc. Sprite always faces the camera, so it stays bright at any angle.
+  function makeSatelliteTexture() {
+    const size = 64;
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    const ctx = cv.getContext('2d');
+    const grad = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+    grad.addColorStop(0,    'rgba(255, 255, 255, 1.0)');
+    grad.addColorStop(0.25, 'rgba(220, 235, 255, 0.7)');
+    grad.addColorStop(0.55, 'rgba(180, 210, 255, 0.18)');
+    grad.addColorStop(1,    'rgba(180, 210, 255, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+    return new THREE.CanvasTexture(cv);
+  }
+  const satMat = new THREE.SpriteMaterial({
+    map: makeSatelliteTexture(),
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    fog: false,
+    blending: THREE.AdditiveBlending,   // brightens the background — glows
+  });
+  const satDot = new THREE.Sprite(satMat);
+  satDot.scale.set(2.5, 2.5, 1);        // visible size in world units
+
   group.add(satDot);
   group.userData.sat = {
     dot: satDot,
