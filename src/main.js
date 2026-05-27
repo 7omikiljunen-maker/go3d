@@ -474,12 +474,20 @@ async function doAiMove() {
     await new Promise(r => setTimeout(r, 30));
   }
 
-  const move = aiMove(current);
-
-  if (isHard) {
-    aiBtn.disabled = false;
-    // Reset textContent so refreshUI/updateAiBtn will set the proper label
-    aiBtn.textContent = '';
+  // Compute the move — wrapped in try/finally so the button NEVER stays stuck
+  // on "Thinking…" even if MCTS throws or returns unexpectedly.
+  let move = null;
+  try {
+    move = aiMove(current);
+  } catch (err) {
+    console.error('AI compute failed:', err);
+    move = null;   // fall through to pass logic so the game keeps moving
+  } finally {
+    if (isHard) {
+      aiBtn.disabled    = false;
+      aiBtn.textContent = '';        // wipe "Thinking…" before refreshUI runs
+    }
+    refreshUI();                     // immediately re-label the button
   }
 
   if (!move) {
