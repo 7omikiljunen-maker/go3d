@@ -74,15 +74,17 @@ export function showOverlay(capB, capW, scoringMode, terrResult, komi) {
 
   document.getElementById('overlayTitle').textContent = winner;
 
-  let body = `<b>Captures</b><br>Black: ${capB} &nbsp;|&nbsp; White: ${capW}`;
+  let body = '';
+  if (scoringMode === 'captures' || scoringMode === 'both')
+    body += `<b>Captures</b><br>Black: ${capB} &nbsp;|&nbsp; White: ${capW}`;
   if (scoringMode === 'territory' || scoringMode === 'both')
-    body += `<br><br><b>Territory</b><br>Black: ${terrB} &nbsp;|&nbsp; White: ${terrW}<br>Neutral: ${terrResult?.neutral ?? 0}`;
+    body += `${body ? '<br><br>' : ''}<b>Territory</b><br>Black: ${terrB} &nbsp;|&nbsp; White: ${terrW}<br>Neutral: ${terrResult?.neutral ?? 0}`;
   body += `<br><br><b>Komi</b>: +${komi} for White`;
-  if (scoringMode === 'both')
-    body += `<br><br><b>Total</b><br>Black: ${totalB} &nbsp;|&nbsp; White: ${totalW}`;
+  body += `<br><br><b>Score</b><br>Black: ${totalB} &nbsp;|&nbsp; White: ${totalW}`;
 
   document.getElementById('overlayBody').innerHTML = body;
-  document.getElementById('overlay').style.display = 'flex';
+  document.getElementById('overlayTerrBtn').textContent = 'Hide territory';
+  document.getElementById('overlay').style.display = 'block';
   document.getElementById('aiBtn').style.display   = 'none';
 }
 

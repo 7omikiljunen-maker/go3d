@@ -20,7 +20,7 @@ import {
   initRenderer, resizeRenderer, startRenderLoop,
   buildGrid, buildDots, clearScene,
   addStoneMesh, removeStonesMesh, rebuildStoneMeshes,
-  updateHints, showTerritory, syncLayerVisibility,
+  updateHints, showTerritory, clearTerritory, toggleTerritory, syncLayerVisibility,
   setSceneBg, setOnFrame,
   camera,
 } from './renderer.js';
@@ -407,7 +407,7 @@ function handleUndo() {
   if (!undoMove()) return;
   rebuildStoneMeshes(lastPlaced);
   syncLayerVisibility(lastPlaced);
-  if (wasOver) hideOverlay();
+  if (wasOver) { hideOverlay(); clearTerritory(); }
   saveToStorage();
   refreshUI(); refreshHints();
   // If automove is enabled and undo landed us on an AI turn, auto-resume.
@@ -450,7 +450,7 @@ async function handleUndoResponse(accepted) {
     if (!undoMove()) { refreshUI(); return; }
     rebuildStoneMeshes(lastPlaced);
     syncLayerVisibility(lastPlaced);
-    if (wasOver) hideOverlay();
+    if (wasOver) { hideOverlay(); clearTerritory(); }
     refreshUI(); refreshHints();
     await pushGameState({ board, N, current, captures, consecutivePasses, gameOver, koState, lastPlaced });
   } else {
@@ -521,11 +521,11 @@ function endGame() {
   cancelAutoMove();
   updateHints(current, true, isComputerTurn, isLegal, koState);
 
-  let terrResult = { black: 0, white: 0, neutral: 0 };
-  if (scoringMode === 'territory' || scoringMode === 'both') {
-    terrResult = showTerritory();
-  }
-  showOverlay(captures[0], captures[1], scoringMode, terrResult, komi);
+  // Always paint territory visually; only count it in the score if the mode calls for it
+  const terrResult = showTerritory();
+  const terrForScore = (scoringMode === 'territory' || scoringMode === 'both')
+    ? terrResult : { black: 0, white: 0, neutral: 0 };
+  showOverlay(captures[0], captures[1], scoringMode, terrForScore, komi);
   // Show overlay undo button only when there is something to undo
   document.getElementById('overlayUndoBtn').style.display = history.length > 0 ? '' : 'none';
   if (!isOnline) clearStorage();
@@ -619,6 +619,11 @@ document.getElementById('passBtn').onclick = async () => {
 
 document.getElementById('undoBtn').onclick        = handleUndo;
 document.getElementById('overlayUndoBtn').onclick = handleUndo;
+
+document.getElementById('overlayTerrBtn').onclick = () => {
+  const visible = toggleTerritory();
+  document.getElementById('overlayTerrBtn').textContent = visible ? 'Hide territory' : 'Show territory';
+};
 
 document.getElementById('aiBtn').onclick = () => {
   if (gameOver) return;

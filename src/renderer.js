@@ -242,7 +242,7 @@ function buildStarfield() {
     blending: THREE.AdditiveBlending,   // brightens the background — glows
   });
   const satDot = new THREE.Sprite(satMat);
-  satDot.scale.set(2.5, 2.5, 1);        // visible size in world units
+  satDot.scale.set(1.25, 1.25, 1);      // visible size in world units
 
   group.add(satDot);
   group.userData.sat = {
@@ -437,6 +437,7 @@ export function syncLayerVisibility(lastPlaced) {
 // ─── Territory display ───────────────────────────────────────────────────────
 export function showTerritory() {
   while (terrGroup.children.length) terrGroup.remove(terrGroup.children[0]);
+  terrGroup.visible = true;
   const { black, white, neutral, ownership } = computeTerritory(board);
   const geoT = new THREE.SphereGeometry(C.stoneR * 0.36, 8, 8);
   const matB = new THREE.MeshBasicMaterial({ color: 0x3366ff, opacity: 0.4, transparent: true, depthWrite: false });
@@ -450,6 +451,16 @@ export function showTerritory() {
     terrGroup.add(m);
   }
   return { black, white, neutral };
+}
+
+export function clearTerritory() {
+  while (terrGroup.children.length) terrGroup.remove(terrGroup.children[0]);
+  terrGroup.visible = true;
+}
+
+export function toggleTerritory() {
+  terrGroup.visible = !terrGroup.visible;
+  return terrGroup.visible;
 }
 
 // ─── Render loop ─────────────────────────────────────────────────────────────

@@ -439,25 +439,26 @@
       font-size: 13px; cursor: pointer; color: var(--text);
     }
 
-    /* ── Game-over overlay ───────────────────────────────────────────────── */
+    /* ── Game-over overlay (floating corner card, no backdrop) ──────────── */
     #overlay {
-      display: none; position: absolute; inset: 0;
-      background: var(--backdrop);
-      align-items: center; justify-content: center;
-      z-index: 20; flex-direction: column;
+      display: none; position: fixed;
+      top: 14px; right: 14px;
+      z-index: 20;
     }
     #overlay-box {
       background: var(--surface);
       border: 0.5px solid var(--surface-border);
-      border-radius: 16px; padding: 28px 36px;
-      text-align: center; color: var(--text); min-width: 260px;
+      border-radius: 16px; padding: 24px 28px;
+      text-align: center; color: var(--text);
+      width: min(300px, calc(100vw - 28px));
+      box-shadow: 0 8px 32px rgba(0,0,0,0.55);
     }
     #overlayTitle { font-size: 18px; font-weight: 500; margin-bottom: 16px; }
     #overlayBody  { font-size: 13px; color: var(--text-muted); line-height: 1.9; }
     #overlay-btns {
-      display: flex; gap: 10px; margin-top: 18px; justify-content: center;
+      display: flex; gap: 10px; margin-top: 18px; justify-content: center; flex-wrap: wrap;
     }
-    #overlayClose, #overlayUndoBtn {
+    #overlayClose, #overlayUndoBtn, #overlayTerrBtn {
       background: var(--ctrl-bg);
       border: 0.5px solid var(--ctrl-border);
       border-radius: 20px; padding: 7px 22px;
@@ -916,6 +917,7 @@
         <div id="overlayBody"></div>
         <div id="overlay-btns">
           <button id="overlayUndoBtn">Undo</button>
+          <button id="overlayTerrBtn">Hide territory</button>
           <button id="overlayClose">New game</button>
         </div>
       </div>
