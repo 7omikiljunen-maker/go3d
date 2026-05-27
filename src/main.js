@@ -72,7 +72,10 @@ let currentUser = null;
 function updateAuthUI() {
   const el = document.getElementById('authStatus');
   if (!el) return;
-  if (currentUser) {
+  // Anonymous users (auto-signed-in guests) are treated as "not signed in" for
+  // the create-game UI — they have no displayName/email, and any payment they
+  // made would be tied to a UID that vanishes when cookies are cleared.
+  if (currentUser && !currentUser.isAnonymous) {
     el.innerHTML =
       `Signed in as <b>${currentUser.displayName ?? currentUser.email}</b> &nbsp;·&nbsp; <a id="signOutLink">Sign out</a>`;
     document.getElementById('signOutLink').onclick = () => signOut();
@@ -719,14 +722,19 @@ function closePaymentGate() {
 document.getElementById('createGameBtn').onclick = async () => {
   track('create_game_clicked', { board_size: onlineN });
 
-  // Step 1: must be signed in
-  if (!currentUser) {
+  // Step 1: must be signed in with a REAL account. Anonymous guests don't count
+  // — their UID is ephemeral, so any payment would be lost when cookies clear.
+  if (!currentUser || currentUser.isAnonymous) {
     try {
       const result = await signInWithGoogle();
       if (result) {
         currentUser = result.user;
         updateAuthUI();
         track('signin_completed');
+      } else {
+        // Mobile redirect path — page will reload after redirect.
+        // Return here; the resolveRedirect handler picks up on reload.
+        return;
       }
     } catch (_) {
       track('signin_cancelled');
