@@ -4,7 +4,7 @@ import {
   koState, lastPlaced, layerVisible,
   scoringMode, playMode, setPlayMode,
   aiDifficulty, setAiDifficulty,
-  komi,
+  komi, setKomi,
   history,
   initBoard, placeStone, doPass, setGameOver, setLayerVisible,
   isLegal, legalMoves, cfg,
@@ -537,10 +537,20 @@ function endGame() {
   });
 }
 
+// ─── Default komi per board size ─────────────────────────────────────────────
+function defaultKomi(n) {
+  if (n === 3)  return 1.5;
+  if (n === 5)  return 3.5;
+  if (n === 7)  return 5.5;
+  if (n === 9)  return 6.5;
+  /* 11 */      return 7.5;
+}
+
 // ─── Setup / reset ───────────────────────────────────────────────────────────
 function setupBoard() {
   cancelAutoMove();        // any pending move from the previous game is stale
   automovePaused = false;  // new game = unpaused (pause is per-game only)
+  setKomi(defaultKomi(N)); // auto-scale komi to board size
   clearScene();
   initBoard();
   if (!isOnline) clearStorage();
