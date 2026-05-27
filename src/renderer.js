@@ -443,10 +443,10 @@ export function startRenderLoop() {
         const phase = mat.userData.twinklePhase ?? 0;
 
         if (mat.userData.twinkles === 'beacon') {
-          // Multi-frequency shimmer: fast flutter + medium pulse + slow breathe
-          const shimmer = 0.45 * Math.sin(t * 2.1 + phase)
-                        + 0.35 * Math.sin(t * 6.7 + phase * 1.3)
-                        + 0.20 * Math.sin(t * 0.5 + phase * 0.5);
+          // Multi-frequency shimmer: gentle flutter + medium pulse + slow breathe
+          const shimmer = 0.45 * Math.sin(t * 0.7 + phase)
+                        + 0.35 * Math.sin(t * 1.9 + phase * 1.3)
+                        + 0.20 * Math.sin(t * 0.15 + phase * 0.5);
           const norm  = (shimmer + 1) * 0.5;          // 0 … 1
           mat.opacity = 0.25 + norm * 0.75;            // 0.25 → 1.0
           mat.size    = mat.userData.baseSize * (0.65 + norm * 0.70); // ×0.65 → ×1.35
