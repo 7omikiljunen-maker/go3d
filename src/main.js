@@ -260,6 +260,7 @@ function handleOpponentLeft(gameWasActive) {
   document.getElementById('overlayBody').textContent = gameWasActive
     ? 'Your opponent has left the game.'
     : 'Your opponent left before the game started.';
+  document.getElementById('overlayUndoBtn').style.display = 'none';
   document.getElementById('overlay').style.display = 'flex';
 }
 
