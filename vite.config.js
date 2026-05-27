@@ -16,6 +16,9 @@ export default defineConfig({
       workbox: {
         // Precache all JS, CSS, HTML, images
         globPatterns: ['**/*.{js,css,html,png,svg,ico,woff,woff2}'],
+        // Activate new SWs immediately — no waiting for old tabs to close
+        skipWaiting: true,
+        clientsClaim: true,
         // Don't intercept Firebase / Google API calls — let them go to network
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [
