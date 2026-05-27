@@ -139,13 +139,21 @@ function refreshHints() {
 
 function refreshUI() {
   updateUI(current, captures, isComputerTurn);
-  updateAiBtn(gameOver, playMode, current, automoveTimer !== null);
+  // Compute automove button status: pending (timer running) > paused > idle
+  const status = automoveTimer ? 'pending'
+               : (automoveEnabled && automovePaused) ? 'paused'
+               : 'idle';
+  updateAiBtn(gameOver, playMode, current, status);
   // Disable undo only while waiting for the opponent's undo response
   updateUndoBtn(history.length, waitingForUndoResponse);
 }
 
 // ─── Automove (AI plays automatically in PvC / CvC) ──────────────────────────
+// Two pieces of state:
+//   automoveEnabled — persistent user preference (Settings → AUTOMOVE)
+//   automovePaused  — transient, just for this game. Resets on new game.
 let automoveEnabled = localStorage.getItem('go3d-automove') !== '0'; // default ON
+let automovePaused  = false;
 let automoveTimer   = null;
 
 function cancelAutoMove() {
@@ -157,7 +165,7 @@ function cancelAutoMove() {
 
 function scheduleAutoMove() {
   cancelAutoMove();
-  if (!automoveEnabled || gameOver || isOnline) return;
+  if (!automoveEnabled || automovePaused || gameOver || isOnline) return;
   if (!isComputerTurn()) return;
   // PvC: short delay so the player sees their own move land. CvC: slower so
   // it's watchable as the two AIs play through.
@@ -503,6 +511,7 @@ function endGame() {
 // ─── Setup / reset ───────────────────────────────────────────────────────────
 function setupBoard() {
   cancelAutoMove();        // any pending move from the previous game is stale
+  automovePaused = false;  // new game = unpaused (pause is per-game only)
   clearScene();
   initBoard();
   if (!isOnline) clearStorage();
@@ -584,15 +593,20 @@ document.getElementById('overlayUndoBtn').onclick = handleUndo;
 
 document.getElementById('aiBtn').onclick = () => {
   if (gameOver) return;
-  // If an automove is queued, this button acts as Pause — cancel the pending
-  // move and turn off automove for the rest of the game (toggle in Settings
-  // to re-enable, or just click again as a manual "Computer move ▶").
+  // Three behaviors depending on state:
+  //   1) An automove is queued    → Pause: cancel timer + set paused flag (this game only)
+  //   2) Paused and queued nothing → Resume: clear paused flag + schedule next AI move
+  //   3) Otherwise (setting OFF)   → Manual: trigger one AI move
   if (automoveTimer) {
     cancelAutoMove();
-    automoveEnabled = false;
-    localStorage.setItem('go3d-automove', '0');
-    syncAutomoveBtn();
+    automovePaused = true;
     refreshUI();
+    return;
+  }
+  if (automoveEnabled && automovePaused) {
+    automovePaused = false;
+    refreshUI();
+    if (isComputerTurn()) scheduleAutoMove();
     return;
   }
   if (playMode === 'cvc' || (playMode === 'pvc' && current === 2)) doAiMove();
@@ -996,6 +1010,8 @@ document.getElementById('automoveBtn').onclick = () => {
   automoveEnabled = !automoveEnabled;
   localStorage.setItem('go3d-automove', automoveEnabled ? '1' : '0');
   syncAutomoveBtn();
+  // Toggling the setting always clears any transient paused state.
+  automovePaused = false;
   if (!automoveEnabled) {
     cancelAutoMove();
     refreshUI();

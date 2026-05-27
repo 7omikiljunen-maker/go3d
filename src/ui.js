@@ -29,7 +29,11 @@ export function updateUI(current, captures, isComputerTurn) {
 }
 
 // ─── Button visibility ────────────────────────────────────────────────────────
-export function updateAiBtn(gameOver, playMode, current, automovePending = false) {
+// automoveStatus: 'idle' | 'pending' | 'paused'
+//   pending → an AI auto-move is queued — clicking will pause it
+//   paused  → user has paused the auto-chain for this game — clicking resumes
+//   idle    → automove is off (or N/A) — clicking triggers a single AI move
+export function updateAiBtn(gameOver, playMode, current, automoveStatus = 'idle') {
   const btn = document.getElementById('aiBtn');
   if (gameOver) { btn.style.display = 'none'; return; }
   const visible =
@@ -39,7 +43,10 @@ export function updateAiBtn(gameOver, playMode, current, automovePending = false
   if (!visible) return;
   // Reset disabled state when not actively computing (doAiMove handles 'Thinking…')
   if (btn.textContent !== 'Thinking…') {
-    btn.textContent = automovePending ? '⏸ Pause auto' : 'Computer move ▶';
+    btn.textContent =
+      automoveStatus === 'pending' ? '⏸ Pause auto' :
+      automoveStatus === 'paused'  ? '▶ Resume auto' :
+                                     'Computer move ▶';
     btn.disabled = false;
   }
 }
