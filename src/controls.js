@@ -11,6 +11,15 @@ let lastDragTime = 0;
 
 export function setRadius(r) { radius = r; }
 
+/** Bump the post-drag cooldown — call after any programmatic camera move
+ *  (e.g. Reset, board init) so auto-rotate doesn't immediately spin away. */
+export function bumpDragTime() { lastDragTime = Date.now(); }
+
+// Unstick `dragging` if the matching mouseup gets eaten (alt-tab during drag,
+// right-click context menu, devtools steal focus). Without this, auto-rotate
+// would refuse to fire forever after such an event.
+window.addEventListener('blur', () => { dragging = false; });
+
 export function updateCamera() {
   camera.position.set(
     radius * Math.sin(phi) * Math.sin(theta),
@@ -29,6 +38,7 @@ export function attachMouseControls(canvas, onClickAt) {
   window.addEventListener('mouseup', e => {
     if (dragging && dragDist < 6) onClickAt(e.clientX, e.clientY);
     dragging = false;
+    lastDragTime = Date.now();
   });
   window.addEventListener('mousemove', e => {
     if (!dragging) return;
@@ -38,11 +48,13 @@ export function attachMouseControls(canvas, onClickAt) {
     phi = Math.max(0.12, Math.min(Math.PI - 0.12, phi - dy * 0.007));
     lastX = e.clientX; lastY = e.clientY;
     updateCamera();
+    lastDragTime = Date.now();
   });
   canvas.addEventListener('wheel', e => {
     e.preventDefault();
     radius = Math.max(3, Math.min(40, radius + e.deltaY * 0.025));
     updateCamera();
+    lastDragTime = Date.now();
   }, { passive: false });
 }
 
@@ -82,6 +94,7 @@ export function attachTouchControls(canvas, onClickAt) {
         updateCamera();
       }
       lastPinchDist = dist;
+      lastDragTime = Date.now();
       return;
     }
     // ── Single-finger orbit ───────────────────────────────────────────────────
@@ -92,6 +105,7 @@ export function attachTouchControls(canvas, onClickAt) {
     phi = Math.max(0.12, Math.min(Math.PI - 0.12, phi - dy * 0.007));
     lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
     updateCamera();
+    lastDragTime = Date.now();
   }, { passive: false }); // must be non-passive to call preventDefault on pinch
 
   canvas.addEventListener('touchend', e => {
@@ -102,6 +116,7 @@ export function attachTouchControls(canvas, onClickAt) {
       dragging = false;
       wasMultiTouch = false;
       lastPinchDist = null;
+      lastDragTime = Date.now();
     }
   });
 }

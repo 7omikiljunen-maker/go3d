@@ -28,7 +28,7 @@ import {
 import {
   setRadius, updateCamera,
   attachMouseControls, attachTouchControls, pickIntersection,
-  autoRotateTick,
+  autoRotateTick, bumpDragTime,
 } from './controls.js';
 
 import {
@@ -87,18 +87,19 @@ onAuthChange(user => {
 });
 
 // ─── Handle redirect sign-in (mobile) ────────────────────────────────────────
-// Only call getRedirectResult when we actually started a redirect — avoids
-// Firebase Auth showing its own "There was an error" toast on every page load
-// when there is no pending redirect to resume.
-if (sessionStorage.getItem('pendingCreateGame')) {
-  resolveRedirect().then(result => {
-    if (!result) return;
-    currentUser = result.user;
-    updateAuthUI();
+// Call resolveRedirect() unconditionally — Firebase needs this every page load
+// to finalize any pending redirect (especially in iOS Private Browsing where
+// sessionStorage may have been cleared between the redirect-out and back).
+// Only re-open the modal if pendingCreateGame was set.
+resolveRedirect().then(result => {
+  if (!result) return;
+  currentUser = result.user;
+  updateAuthUI();
+  if (sessionStorage.getItem('pendingCreateGame')) {
     sessionStorage.removeItem('pendingCreateGame');
     onlineModal.style.display = 'flex';    // re-open the online modal
-  }).catch(() => { sessionStorage.removeItem('pendingCreateGame'); });
-}
+  }
+}).catch(() => {});
 
 // ─── Canvas & renderer init ───────────────────────────────────────────────────
 const canvas = document.getElementById('c');
@@ -433,6 +434,7 @@ function setupBoard() {
   if (!isOnline) clearStorage();
   setRadius(cfg(N).camR);
   updateCamera();
+  bumpDragTime();   // give the user 1 s to see the freshly-positioned board
   buildGrid();
   buildDots();
   buildLayerButtons(handleLayerToggle);
@@ -873,7 +875,24 @@ document.getElementById('rotateBtn').onclick = () => {
   syncRotateBtn();
 };
 
-setOnFrame(dt => { if (rotateMode) autoRotateTick(dt); });
+// Pause auto-rotate while any modal or full-screen overlay is open — the user
+// is reading text and wants the board behind to stay put for visual context.
+function anyOverlayOpen() {
+  const ids = ['overlay', 'online-modal', 'waiting-overlay',
+               'payment-modal', 'settings-modal', 'confirm-modal'];
+  for (const id of ids) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    if (el.classList.contains('open')) return true;
+    const disp = el.style.display;
+    if (disp && disp !== 'none') return true;
+  }
+  return false;
+}
+
+setOnFrame(dt => {
+  if (rotateMode && !anyOverlayOpen()) autoRotateTick(dt);
+});
 
 // ─── PWA install prompt ───────────────────────────────────────────────────────
 let installPrompt = null;

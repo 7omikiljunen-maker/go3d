@@ -22,9 +22,19 @@ export let intersectionPoints = [];
 const dropAnimating  = [];  // stones dropping in
 const exitAnimating  = [];  // captured stones flying out
 
-// Per-frame callback (used for auto-rotate, injected from main.js)
-let _onFrame = null;
-export function setOnFrame(fn) { _onFrame = fn; }
+// Per-frame callback list (used for auto-rotate; supports multiple hooks
+// so future features won't silently clobber existing ones).
+const _frameHooks = [];
+/** Register a per-frame hook. Returns an unhook function. */
+export function addFrameHook(fn) {
+  _frameHooks.push(fn);
+  return () => {
+    const i = _frameHooks.indexOf(fn);
+    if (i >= 0) _frameHooks.splice(i, 1);
+  };
+}
+// Legacy single-slot setter retained for any callers still using it.
+export function setOnFrame(fn) { addFrameHook(fn); }
 
 // ─── Hint materials ───────────────────────────────────────────────────────────
 const hintMats = [
@@ -424,7 +434,7 @@ export function startRenderLoop() {
     requestAnimationFrame(animate);
     const dt = clock.getDelta();
 
-    if (_onFrame) _onFrame(dt);
+    for (const fn of _frameHooks) fn(dt);
 
     // Stone drop animation
     for (let i = dropAnimating.length - 1; i >= 0; i--) {
@@ -493,6 +503,13 @@ export function startRenderLoop() {
             };
             sat.start.copy(rp());
             sat.end.copy(rp());
+            // Reject near-antipodal pairs: when start and end are nearly opposite,
+            // the lerped midpoint passes through the origin, and normalize() of a
+            // zero vector returns zero — the dot would teleport to the board centre.
+            let safety = 5;
+            while (sat.start.dot(sat.end) / (r * r) < -0.9 && safety-- > 0) {
+              sat.end.copy(rp());
+            }
             sat.duration = 20 + Math.random() * 15;  // 20–35 seconds
             sat.progress = 0;
             sat.active   = true;
