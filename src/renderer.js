@@ -440,8 +440,14 @@ export function showTerritory() {
   terrGroup.visible = true;
   const { black, white, neutral, ownership } = computeTerritory(board);
   const geoT = new THREE.SphereGeometry(C.stoneR * 0.36, 8, 8);
-  const matB = new THREE.MeshBasicMaterial({ color: 0x3366ff, opacity: 0.4, transparent: true, depthWrite: false });
-  const matW = new THREE.MeshBasicMaterial({ color: 0xdddddd, opacity: 0.4, transparent: true, depthWrite: false });
+  // Theme-aware colors so markers stay visible on both backgrounds.
+  // Light theme: deeper blue + warm amber (light gray would be invisible on #dce3f0).
+  // Dark theme: original blue + light gray.
+  const colorB = lightTheme ? 0x1a3a99 : 0x3366ff;
+  const colorW = lightTheme ? 0xcc6622 : 0xdddddd;
+  const opacity = lightTheme ? 0.55 : 0.4;
+  const matB = new THREE.MeshBasicMaterial({ color: colorB, opacity, transparent: true, depthWrite: false });
+  const matW = new THREE.MeshBasicMaterial({ color: colorW, opacity, transparent: true, depthWrite: false });
   for (let x = 0; x < N; x++) for (let y = 0; y < N; y++) for (let z = 0; z < N; z++) {
     const o = ownership[x][y][z];
     if (o === 0 || board[x][y][z] !== 0) continue;
@@ -589,5 +595,7 @@ export function setSceneBg(hex, isLight = false) {
   if (Array.isArray(layerVisible)) {
     buildGrid();
     buildDots();
+    // If territory markers are currently displayed, rebuild them with theme-aware colors
+    if (terrGroup && terrGroup.children.length > 0) showTerritory();
   }
 }
