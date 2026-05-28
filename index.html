@@ -865,7 +865,13 @@
         <h3>Scoring</h3>
         <p><b>Captures</b> — stones you have taken.<br>
            <b>Territory</b> — empty intersections completely surrounded by your colour.<br>
-           <b>Komi</b> — White gets +6.5 bonus points to compensate for Black moving first.</p>
+           <b>Komi</b> — White gets a bonus to compensate for Black moving first. It scales with board size (1.5 on 3³ up to 7.5 on 11³) and is applied automatically.</p>
+
+        <h3>After the game ends</h3>
+        <p>A <b>score card</b> appears in the top-right corner showing captures, territory, komi, and the final result. The board stays visible with <b>territory painted</b> in colour — Blue/amber (light theme) or blue/grey (dark theme) — so you can see exactly who owned what.<br><br>
+           Tap <b>Hide territory</b> to toggle the markers on or off.<br>
+           In <b>offline games</b> tap <b>New game</b> to start fresh.<br>
+           In <b>online games</b> tap <b>Rematch</b> to challenge your opponent again (they can accept or decline), or <b>Leave game</b> to exit.</p>
 
         <h3>Controls</h3>
         <p><b>Tap / click</b> — place a stone.<br>
@@ -888,7 +894,7 @@
            Change it any time in <b>⚙️ Settings → AI DIFFICULTY</b>.</p>
 
         <h3>Settings ⚙️</h3>
-        <p>Tap <b>⚙️</b> to change board size (3×3×3 up to 9×9×9), game mode, AI difficulty, scoring method, sound, and colour theme.</p>
+        <p>Tap <b>⚙️</b> to change board size (3×3×3 up to 11×11×11), game mode, AI difficulty, scoring method, sound, and colour theme. The 11×11×11 board is available in online PvP only.</p>
 
         <h3>Install as an app</h3>
         <p>Tap <b>⬇ Install</b> in ⚙️ Settings (or the install banner at the bottom of the screen) to add Go 3D to your home screen or desktop. Once installed, you can play single-player modes (PvP, PvC, CvC) <b>offline</b> — no internet needed. Online games still require a connection.</p>
@@ -902,9 +908,11 @@
 
         <h3>Playing online</h3>
         <p>Open <b>⚙️ Settings</b> and tap <b>🌐 Play Online →</b>.<br><br>
-           <b>To host a game:</b> sign in with Google, then tap <b>✦ Create game</b>. Creating a game requires a one-time <b>€1 payment</b> — paid once, valid forever. Share the 6-letter room code with your friend.<br><br>
-           <b>To join a game:</b> enter the 6-letter code and tap <b>Join game →</b>. Joining is always <b>free</b>.<br><br>
-           You play <b>Black</b> as host and <b>White</b> as guest. Moves sync instantly. Tap <b>💬</b> for in-game chat. Tap <b>Leave</b> to exit.</p>
+           <b>To host a game:</b> sign in with Google, then tap <b>✦ Create game</b>. Creating a game requires a one-time <b>€1 payment</b> — paid once, valid forever.<br><br>
+           <b>Invite your friend</b> in two ways:<br>
+           • Tap <b>Copy invite link</b> in the waiting screen and send the link — your friend just taps it and lands straight in your game, no code needed.<br>
+           • Or share the 6-letter <b>room code</b> manually; your friend enters it and taps <b>Join game →</b>.<br><br>
+           Joining is always <b>free</b>. You play <b>Black</b> as host and <b>White</b> as guest. Moves sync instantly. Tap <b>💬</b> for in-game chat.</p>
 
         <button id="helpClose">Got it</button>
       </div>

@@ -8,8 +8,8 @@ Work through these over the next few days. Anything that fails → make a note �
 - ✅ §3 Single-player & AI — works
 - ✅ §4 Offline mode — works
 - ✅ §5 Install / PWA — works
-- ⏳ §6 UI / UX polish — pending
-- ⏳ §7 Edge cases — pending
+- ✅ §6 UI / UX polish — verified 2026-05-26
+- ✅ §7 Edge cases — verified 2026-05-26
 - ✅ §8 Sounds — works
 - 🟡 §9 Browser compatibility — Chrome desktop + Android Chrome OK; iOS Safari: page renders, full flow not tested
 - ⏳ §10 Legal / analytics — pending
