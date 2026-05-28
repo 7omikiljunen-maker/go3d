@@ -1,6 +1,6 @@
 # Go 3D — To-Do List
 
-Last updated: 2026-05-27 (session 2)
+Last updated: 2026-05-28
 
 ---
 
@@ -41,7 +41,15 @@ Last updated: 2026-05-27 (session 2)
 
 ---
 
-## ✅ Done (recent — 2026-05-27 session 2)
+## ✅ Done (2026-05-28)
+
+### Polish shipped
+- [x] **Help overlay updated** — new "After the game ends" section (score card, territory painting, Hide territory / Rematch / Leave game buttons); komi note updated to mention per-board-size scaling; board size cap updated to 11³ (PvP-only note); Playing online section describes Copy invite link flow
+- [x] **Remaining uncommitted changes from session 2 pushed** — TESTING.md §6/§7 marked done, icon.png optimised, .firebaserc added
+
+---
+
+## ✅ Done (2026-05-27 session 2)
 
 ### Features shipped
 - [x] **Territory painting** — colored markers at every owned empty intersection at game end; theme-aware colors (deep blue + amber in light mode, blue + light gray in dark mode); respects layer visibility toggles
