@@ -18,7 +18,7 @@ Work through these over the next few days. Anything that fails → make a note �
 
 ## 1. Sign-in & payment (the money path)
 
-- [ ] **Brand new Google account, brand new device** → sign in → pay €1 → game unlocks within 30 seconds
+- [ ] **Brand new Google account, brand new device** → sign in → pay €2 → game unlocks within 30 seconds
 - [ ] Cancel the Stripe payment halfway → can retry without weird state
 - [ ] Pay successfully but close the tab before redirect → reopen go3dgame.com → still unlocked
 - [ ] Try Create Game while signed out → sign-in prompt → after sign-in, flow continues
@@ -77,7 +77,7 @@ Work through these over the next few days. Anything that fails → make a note �
 
 ## 7. Edge cases
 
-- [ ] Try to pay €1 with a declined card → graceful error, can retry
+- [ ] Try to pay €2 with a declined card → graceful error, can retry
 - [ ] Try a room code that doesn't exist → clear error message
 - [ ] Try to join a room that's already full → clear error message
 - [ ] Try the same room code as both host AND guest → no weird collision

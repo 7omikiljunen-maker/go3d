@@ -860,12 +860,12 @@ function showPaymentGate(uid) {
   const modal = document.getElementById('payment-modal');
   modal.classList.add('open');
   document.getElementById('payStatus').textContent = '';
-  document.getElementById('payBtn').textContent = 'Pay €1 →';
+  document.getElementById('payBtn').textContent = 'Pay €2 →';
   document.getElementById('payBtn').disabled = false;
 
   // Listen for Firebase confirmation — fires automatically when webhook writes paid:true
   stopWatchingPayment = watchPaid(uid, () => {
-    track('payment_completed', { value: 1, currency: 'EUR' });
+    track('payment_completed', { value: 2, currency: 'EUR' });
     closePaymentGate();
     doCreateGame();
   });
