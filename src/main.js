@@ -228,9 +228,9 @@ function exitOnlineMode() {
 }
 
 // ─── Idle monitor (online games) ──────────────────────────────────────────────
-//   - Soft notice when opponent has been silent for 15 min
+//   - Soft notice when opponent has been silent for 10 min
 //   - Auto-end game if 24 h pass with no moves
-const IDLE_NOTICE_MS  = 15 * 60 * 1000;
+const IDLE_NOTICE_MS  = 10 * 60 * 1000;
 const IDLE_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 let remoteLastMoveAt = 0;
 let idleInterval     = null;
@@ -258,7 +258,7 @@ function startIdleMonitor() {
       return;
     }
 
-    // 15-min soft notice — only when waiting for opponent
+    // 10-min soft notice — only when waiting for opponent
     const waitingForOpponent = current !== myPlayer;
     if (waitingForOpponent && elapsed > IDLE_NOTICE_MS) {
       idleBanner.classList.add('show');
