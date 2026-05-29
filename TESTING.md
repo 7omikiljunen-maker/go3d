@@ -113,6 +113,8 @@ Work through these over the next few days. Anything that fails → make a note �
 
 (Log them here as you find them — Claude can fix in batch)
 
-- 
-- 
+- [FIXED 2026-05-29] Undo button missing during online games. Cause: `#app.online-mode #undoBtn { display:none }` in index.html hid it even though the online undo request/consent flow was fully built. Fix: removed the CSS hide.
+- [FIXED 2026-05-29] Host didn't notice guest closing the tab. A keepalive-fetch beacon on close proved unreliable (cross-origin PATCH preflight can't complete during unload). FINAL FIX: made the "Opponent connected" banner LIVE — it flips to red "Opponent disconnected — waiting…" within seconds of any disconnect, driven by Firebase's reliable server-side onDisconnect. The Leave BUTTON still gives an immediate definitive "opponent left" overlay (page alive → signalLeave writes leftBy, reacted to in 8s). 15-min grace remains the definitive backstop. Refresh-safe (rejoin clears own leftBy).
+- [FIXED 2026-05-29] "Opponent left" overlay reused game-over buttons (Rematch, Hide/Show territory) which are meaningless once the opponent is gone. Fix: handleOpponentLeft now hides undo/territory/rematch, clears painted territory, and shows only "New game" (starts a fresh offline game). showOverlay re-shows the territory button so a later real game-over is unaffected.
+- [TESTING GOTCHA, not a bug] "Copy invite link" points to production go3dgame.com — for LOCAL testing, the guest must join by ROOM CODE, not the link, or they load the old live build. (Link is correct for real users.)
 - 

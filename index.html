@@ -162,6 +162,14 @@
       width: 6px; height: 6px; border-radius: 50%;
       background: var(--green-dot); flex-shrink: 0;
     }
+    /* Opponent disconnected — flips the presence banner amber/red within
+       seconds of any disconnect (driven by Firebase onDisconnect). */
+    #opponent-banner.disconnected {
+      background: rgba(239,68,68,0.15);
+      border-color: rgba(239,68,68,0.55);
+      color: #f87171;
+    }
+    #opponent-banner.disconnected .green-dot { background: #ef4444; }
 
     /* ── Left panel ──────────────────────────────────────────────────────── */
     #left-panel {
@@ -220,7 +228,7 @@
     #app.online-mode #onlineBtn     { display: none; }
     #app.online-mode #roomCodeDisplay { display: flex !important;
       flex-direction: column; align-items: flex-end; gap: 2px; }
-    #app.online-mode #undoBtn        { display: none; }
+    /* #undoBtn stays visible in online mode — it triggers the undo request/consent flow */
     #app.online-mode #aiBtn          { display: none !important; }
     #app.online-mode #opponent-banner { display: flex !important; }
     #app.online-mode #chatBtn        { display: flex !important; }

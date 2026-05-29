@@ -42,7 +42,7 @@ import { checkPaid, watchPaid } from './payment.js';
 
 import {
   createRoom, joinRoom, rejoinRoom, subscribeRoom, pushGameState,
-  sendChat, subscribeChat, signalLeave, leaveRoom, deleteRoom,
+  sendChat, subscribeChat, signalLeave, leaveBeacon, leaveRoom, deleteRoom,
   sendUndoRequest, sendUndoResponse,
   sendRematchRequest, sendRematchResponse,
   roomCode, myPlayer, isOnline, unflattenBoard,
@@ -209,6 +209,7 @@ function syncDifficultyButtons() {
 function enterOnlineMode() {
   app.classList.add('online-mode');
   resetBtn.textContent = 'Leave';
+  setOpponentPresence(true); // reset banner to green (clears any stale "disconnected")
   startIdleMonitor();
 }
 
@@ -296,6 +297,18 @@ async function tryPlace(x, y, z) {
   return true;
 }
 
+// ─── Opponent presence banner (live) ─────────────────────────────────────────
+// Reflects the opponent's connection state within seconds of any disconnect.
+// Reliable + immediate; the "opponent left" overlay is the slower definitive end.
+function setOpponentPresence(online) {
+  const banner = document.getElementById('opponent-banner');
+  if (!banner) return;
+  banner.classList.toggle('disconnected', !online);
+  banner.innerHTML = online
+    ? '<span class="green-dot"></span> Opponent connected'
+    : '<span class="green-dot"></span> Opponent disconnected — waiting…';
+}
+
 // ─── Opponent left notification ───────────────────────────────────────────────
 function handleOpponentLeft(gameWasActive) {
   // Always hide the waiting overlay in case we're still there
@@ -306,7 +319,13 @@ function handleOpponentLeft(gameWasActive) {
   document.getElementById('overlayBody').textContent = gameWasActive
     ? 'Your opponent has left the game.'
     : 'Your opponent left before the game started.';
-  document.getElementById('overlayUndoBtn').style.display = 'none';
+  // Nothing online makes sense anymore — the opponent is gone, so Rematch,
+  // territory toggle and undo are all irrelevant. Offer only a fresh offline game.
+  document.getElementById('overlayUndoBtn').style.display    = 'none';
+  document.getElementById('overlayTerrBtn').style.display    = 'none';
+  document.getElementById('overlayRematchBtn').style.display = 'none';
+  document.getElementById('overlayClose').textContent        = 'New game';
+  clearTerritory();
   document.getElementById('overlay').style.display = 'flex';
 }
 
@@ -742,6 +761,22 @@ document.getElementById('overlayClose').onclick = async () => {
   setupBoard();
 };
 
+// ─── Notify opponent when the tab is closed ──────────────────────────────────
+// Closing the tab doesn't click "Leave", so without this the opponent would
+// wait the full 15-min presence grace. leaveBeacon() uses a keepalive fetch
+// (the SDK's async write won't flush as the page dies) to set a leftBy marker
+// the opponent reacts to in ~8 s. A page refresh fires this too, but rejoinRoom()
+// clears the marker on reload before the 8 s window elapses, so refresh is safe.
+// pagehide with persisted=true means the page is going into bfcache (mobile tab
+// switch / back-forward) and may be restored without a reload — skip those to
+// avoid a false "opponent left" when someone just backgrounds the app briefly.
+window.addEventListener('pagehide', e => {
+  if (!e.persisted && isOnline) leaveBeacon();
+});
+window.addEventListener('beforeunload', () => {
+  if (isOnline) leaveBeacon();
+});
+
 // ─── Help ────────────────────────────────────────────────────────────────────
 const helpOverlay = document.getElementById('help-overlay');
 document.getElementById('helpBtn').onclick   = () => { helpOverlay.style.display = 'block'; setTimeout(() => { helpOverlay.scrollTop = 0; }, 0); };
@@ -849,7 +884,7 @@ async function doCreateGame() {
     syncModeButtons();
     subscribeChat(handleNewChatMsg);
     refreshUI(); refreshHints();
-  }, handleOpponentLeft, handleUndoRequest, handleUndoResponse, handleRematchRequest, handleRematchResponse);
+  }, handleOpponentLeft, handleUndoRequest, handleUndoResponse, handleRematchRequest, handleRematchResponse, setOpponentPresence);
 }
 
 // ─── Payment gate ─────────────────────────────────────────────────────────────
@@ -995,7 +1030,7 @@ async function doJoinGame(code) {
   sessionStorage.setItem('go3d-online-room',   code);
   sessionStorage.setItem('go3d-online-player', '2');
 
-  subscribeRoom(applyOpponentState, null, handleOpponentLeft, handleUndoRequest, handleUndoResponse, handleRematchRequest, handleRematchResponse);
+  subscribeRoom(applyOpponentState, null, handleOpponentLeft, handleUndoRequest, handleUndoResponse, handleRematchRequest, handleRematchResponse, setOpponentPresence);
   subscribeChat(handleNewChatMsg);
   refreshUI(); refreshHints();
   return true;
@@ -1263,7 +1298,7 @@ async function tryRejoinOnlineGame() {
       syncModeButtons();
       subscribeChat(handleNewChatMsg);
       refreshUI(); refreshHints();
-    }, handleOpponentLeft, handleUndoRequest, handleUndoResponse, handleRematchRequest, handleRematchResponse);
+    }, handleOpponentLeft, handleUndoRequest, handleUndoResponse, handleRematchRequest, handleRematchResponse, setOpponentPresence);
   } else {
     // Game was in progress — enter online mode FIRST so CSS is correct
     // before setupBoard/applyOpponentState call refreshUI internally
@@ -1272,7 +1307,7 @@ async function tryRejoinOnlineGame() {
     syncModeButtons();
     setupBoard();
     applyOpponentState(result.data);
-    subscribeRoom(applyOpponentState, null, handleOpponentLeft, handleUndoRequest, handleUndoResponse, handleRematchRequest, handleRematchResponse);
+    subscribeRoom(applyOpponentState, null, handleOpponentLeft, handleUndoRequest, handleUndoResponse, handleRematchRequest, handleRematchResponse, setOpponentPresence);
     subscribeChat(handleNewChatMsg);
     refreshUI(); refreshHints();
   }

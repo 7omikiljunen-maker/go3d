@@ -54,7 +54,10 @@ export function updateAiBtn(gameOver, playMode, current, automoveStatus = 'idle'
 export function updateUndoBtn(historyLen, forceDisabled) {
   const btn = document.getElementById('undoBtn');
   btn.disabled = historyLen === 0 || forceDisabled;
-  btn.style.opacity = btn.disabled ? '0.35' : '1';
+  // Keep a disabled undo button clearly visible (0.5, not near-invisible) so it
+  // reads as "inactive" rather than "missing" — e.g. the guest before their
+  // first move, who has nothing of their own to undo yet.
+  btn.style.opacity = btn.disabled ? '0.5' : '1';
 }
 
 // ─── End-game overlay ─────────────────────────────────────────────────────────
@@ -83,7 +86,9 @@ export function showOverlay(capB, capW, scoringMode, terrResult, komi) {
   body += `<br><br><b>Score</b><br>Black: ${totalB} &nbsp;|&nbsp; White: ${totalW}`;
 
   document.getElementById('overlayBody').innerHTML = body;
-  document.getElementById('overlayTerrBtn').textContent = 'Hide territory';
+  const terrBtn = document.getElementById('overlayTerrBtn');
+  terrBtn.textContent = 'Hide territory';
+  terrBtn.style.display = ''; // ensure visible (opponent-left hides it; restore on a real game-over)
   document.getElementById('overlay').style.display = 'block';
   document.getElementById('aiBtn').style.display   = 'none';
 }

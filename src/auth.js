@@ -8,9 +8,19 @@ import {
   getRedirectResult,
   signOut as fbSignOut,
   onAuthStateChanged,
+  onIdTokenChanged,
 } from 'firebase/auth';
 
 const provider = new GoogleAuthProvider();
+
+// Cache the current user's ID token so we can authenticate a keepalive REST
+// write at tab-close time (getIdToken() is async and can't be awaited in a
+// pagehide/beforeunload handler). Refreshed automatically on sign-in + renewal.
+let cachedIdToken = null;
+onIdTokenChanged(auth, async user => {
+  cachedIdToken = user ? await user.getIdToken().catch(() => null) : null;
+});
+export const getCachedIdToken = () => cachedIdToken;
 
 /** True on phones/tablets where popups are unreliable. */
 const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
