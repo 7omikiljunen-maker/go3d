@@ -102,6 +102,8 @@ resolveRedirect().then(result => {
   if (sessionStorage.getItem('pendingCreateGame')) {
     sessionStorage.removeItem('pendingCreateGame');
     onlineModal.style.display = 'flex';    // re-open the online modal
+    startCreateFlow();                      // now signed in → drop back on the pay
+                                            // screen (or into creating if paid)
   }
 }).catch(() => {});
 
@@ -891,26 +893,61 @@ async function doCreateGame() {
 const STRIPE_LINK = 'https://buy.stripe.com/cNi3cv1d38TL6MzcFP4Vy00';
 let stopWatchingPayment = null;
 
-function showPaymentGate(uid) {
-  const modal = document.getElementById('payment-modal');
+function showPaymentGate() {
+  const modal     = document.getElementById('payment-modal');
+  const payBtn    = document.getElementById('payBtn');
+  const payStatus = document.getElementById('payStatus');
   modal.classList.add('open');
-  document.getElementById('payStatus').textContent = '';
-  document.getElementById('payBtn').textContent = 'Pay €2 →';
-  document.getElementById('payBtn').disabled = false;
+  payStatus.textContent = '';
+  payBtn.textContent = 'Pay €2 →';
+  payBtn.disabled = false;
 
-  // Listen for Firebase confirmation — fires automatically when webhook writes paid:true
-  stopWatchingPayment = watchPaid(uid, () => {
-    track('payment_completed', { value: 2, currency: 'EUR' });
-    closePaymentGate();
-    doCreateGame();
-  });
+  payBtn.onclick = async () => {
+    // Commit point: only NOW do we need a real Google account, so the purchase
+    // is tied to something permanent. Anonymous guests get upgraded here. This
+    // is the key change — newcomers see the offer BEFORE any login prompt.
+    let user = currentUser;
+    if (!user || user.isAnonymous) {
+      payBtn.disabled = true;
+      payBtn.textContent = 'Signing in…';
+      try {
+        const result = await signInWithGoogle();
+        if (result) {
+          currentUser = user = result.user;
+          updateAuthUI();
+          track('signin_completed');
+        } else {
+          return; // mobile redirect — resolveRedirect() resumes us on reload
+        }
+      } catch (_) {
+        track('signin_cancelled');
+        payBtn.disabled = false;
+        payBtn.textContent = 'Pay €2 →';
+        return; // user closed the popup — leave the gate open so they can retry
+      }
+    }
 
-  document.getElementById('payBtn').onclick = () => {
+    // A returning user who just signed in may already have paid.
+    try {
+      if (await checkPaid(user.uid)) {
+        track('payment_completed', { value: 2, currency: 'EUR' });
+        closePaymentGate();
+        doCreateGame();
+        return;
+      }
+    } catch (_) { /* ignore — proceed to checkout */ }
+
+    // Watch for the webhook to confirm payment, then open Stripe checkout.
+    stopWatchingPayment = watchPaid(user.uid, () => {
+      track('payment_completed', { value: 2, currency: 'EUR' });
+      closePaymentGate();
+      doCreateGame();
+    });
     track('payment_initiated');
-    window.open(`${STRIPE_LINK}?client_reference_id=${uid}`, '_blank');
-    document.getElementById('payBtn').textContent = 'Waiting for payment…';
-    document.getElementById('payBtn').disabled = true;
-    document.getElementById('payStatus').textContent =
+    window.open(`${STRIPE_LINK}?client_reference_id=${user.uid}`, '_blank');
+    payBtn.textContent = 'Waiting for payment…';
+    payBtn.disabled = true;
+    payStatus.textContent =
       'Complete payment in the new tab — this page will update automatically.';
   };
 
@@ -926,38 +963,23 @@ function closePaymentGate() {
 }
 
 // ─── Create game button ───────────────────────────────────────────────────────
-document.getElementById('createGameBtn').onclick = async () => {
+// Show the value/pay gate FIRST; defer Google sign-in until the user actually
+// commits by clicking "Pay" (handled in showPaymentGate). This stops us hitting
+// newcomers with a Google login the instant they click "Create game" — the
+// single biggest drop-off point in the funnel.
+async function startCreateFlow() {
+  // Returning real account that's already paid → straight into creating.
+  if (currentUser && !currentUser.isAnonymous) {
+    try { if (await checkPaid(currentUser.uid)) { await doCreateGame(); return; } }
+    catch (_) { /* fall through to the gate */ }
+  }
+  track('payment_gate_shown');
+  showPaymentGate();
+}
+
+document.getElementById('createGameBtn').onclick = () => {
   track('create_game_clicked', { board_size: onlineN });
-
-  // Step 1: must be signed in with a REAL account. Anonymous guests don't count
-  // — their UID is ephemeral, so any payment would be lost when cookies clear.
-  if (!currentUser || currentUser.isAnonymous) {
-    try {
-      const result = await signInWithGoogle();
-      if (result) {
-        currentUser = result.user;
-        updateAuthUI();
-        track('signin_completed');
-      } else {
-        // Mobile redirect path — page will reload after redirect.
-        // Return here; the resolveRedirect handler picks up on reload.
-        return;
-      }
-    } catch (_) {
-      track('signin_cancelled');
-      return; // user closed the popup
-    }
-  }
-
-  // Step 2: must have paid
-  const paid = await checkPaid(currentUser.uid);
-  if (!paid) {
-    track('payment_gate_shown');
-    showPaymentGate(currentUser.uid);
-    return;
-  }
-
-  await doCreateGame();
+  startCreateFlow();
 };
 
 // ─── Copy invite link ─────────────────────────────────────────────────────────

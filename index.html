@@ -521,6 +521,10 @@
     }
     #payment-title { font-size: 16px; font-weight: 600; margin-bottom: 10px; }
     #payment-body  { font-size: 13px; color: var(--text-muted); line-height: 1.7; margin-bottom: 20px; }
+    #payment-perks { text-align: left; display: inline-block; margin: 2px auto 0; }
+    #payment-perks > div { margin: 7px 0; }
+    .perk-check    { color: #2fa15a; font-weight: 700; margin-right: 7px; }
+    #payment-price { margin-top: 15px; color: var(--text); font-weight: 600; font-size: 13px; }
     #payment-btns  { display: flex; gap: 10px; justify-content: center; margin-bottom: 12px; }
     #payment-btns .ctrl-btn { flex: 1; padding: 8px 0; font-size: 14px; }
     #payBtn {
@@ -728,10 +732,14 @@
     <!-- ── Payment gate ───────────────────────────────────────────────── -->
     <div id="payment-modal">
       <div id="payment-box">
-        <div id="payment-title">One-time payment</div>
+        <div id="payment-title">Host unlimited online games</div>
         <div id="payment-body">
-          Creating online games requires a one-time €2 payment.<br>
-          Joining a friend's game is always free.
+          <div id="payment-perks">
+            <div><span class="perk-check">✓</span> Create unlimited online games — forever</div>
+            <div><span class="perk-check">✓</span> Friends join free — just share a code</div>
+            <div><span class="perk-check">✓</span> One-time payment, no subscription</div>
+          </div>
+          <div id="payment-price">Just €2, once. 7-day refund if you change your mind.</div>
         </div>
         <div id="payment-btns">
           <button id="payBackBtn" class="ctrl-btn">Cancel</button>

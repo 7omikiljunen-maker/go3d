@@ -6,7 +6,11 @@ import { getAuth }       from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey:            "AIzaSyCFXuYLIzNdiupgnWRBSmialb1BUJ0RBVU",
-  authDomain:        "go3d-85751.firebaseapp.com",
+  // Auth served from our OWN subdomain (Firebase Hosting) instead of the default
+  // *.firebaseapp.com. Same-site as go3dgame.com → mobile signInWithRedirect no
+  // longer breaks on browser cross-site storage partitioning. Requires the
+  // auth.go3dgame.com custom domain + SSL to be live before deploying this.
+  authDomain:        "auth.go3dgame.com",
   projectId:         "go3d-85751",
   storageBucket:     "go3d-85751.firebasestorage.app",
   messagingSenderId: "319322282265",
