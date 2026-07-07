@@ -22,6 +22,11 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db          = getDatabase(app);
-export const analytics   = getAnalytics(app);
+// getAnalytics can throw synchronously where storage is blocked (some private
+// modes) — never let telemetry take down the whole app. track.js already
+// try/catches every logEvent, so a null analytics degrades silently.
+let _analytics = null;
+try { _analytics = getAnalytics(app); } catch (_) {}
+export const analytics   = _analytics;
 export const auth        = getAuth(app);
 export const databaseURL = firebaseConfig.databaseURL; // used for keepalive REST writes on tab close

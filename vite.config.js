@@ -14,20 +14,23 @@ export default defineConfig({
       // Use our existing public/manifest.json — don't generate a new one
       manifest: false,
       workbox: {
-        // Precache all JS, CSS, HTML, images
-        globPatterns: ['**/*.{js,css,html,png,svg,ico,woff,woff2}'],
+        // Precache all JS, CSS, HTML, images + manifest.json (json was missing,
+        // so an offline manifest re-fetch used to miss the cache)
+        globPatterns: ['**/*.{js,css,html,png,svg,ico,json,woff,woff2}'],
+        // The 887 KB original icon.png is only fetched by social-card crawlers
+        // (og:image) — the app itself uses /icons/*. Keep it out of the precache.
+        globIgnores: ['icon.png'],
         // Activate new SWs immediately — no waiting for old tabs to close
         skipWaiting: true,
         clientsClaim: true,
-        // Don't intercept Firebase / Google API calls — let them go to network
+        // NOTE: no runtimeCaching here, deliberately. The SW is precache-only:
+        // Firebase RTDB/auth/analytics and Stripe are cross-origin (and RTDB is
+        // a WebSocket), so the SW never touches them — multiplayer, payment and
+        // the paid-entitlement read can never be served stale from cache.
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [
           /[?&]join=/,           // challenge links — bypass cache so ?join= param is preserved
-          /^\/api\//,
-          /firebasedatabase\.app/,
-          /firebaseapp\.com/,
-          /googleapis\.com/,
-          /stripe\.com/,
+          /^\/api\//,            // any future same-origin API must never get the app shell
         ],
       },
     }),

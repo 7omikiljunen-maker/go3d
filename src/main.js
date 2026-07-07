@@ -628,13 +628,15 @@ function defaultKomi(n) {
 }
 
 // ─── Setup / reset ───────────────────────────────────────────────────────────
-function setupBoard() {
+function setupBoard(clearSave = true) {
   cancelAutoMove();        // any pending move from the previous game is stale
   automovePaused = false;  // new game = unpaused (pause is per-game only)
   setKomi(defaultKomi(N)); // auto-scale komi to board size
   clearScene();
   initBoard();
-  if (!isOnline) clearStorage();
+  // clearSave=false on boot: the startup IIFE still needs the save to restore
+  // the previous local game — clearing here made restore dead code.
+  if (!isOnline && clearSave) clearStorage();
   setRadius(cfg(N).camR);
   updateCamera();
   bumpDragTime();   // give the user 1 s to see the freshly-positioned board
@@ -860,7 +862,16 @@ async function doCreateGame() {
 
   let code;
   try {
-    code = await createRoom(N, board);
+    // RTDB set() never rejects while offline — it queues the write silently and
+    // the promise pends until reconnect — so race it against a timeout to give
+    // the user a real error instead of an eternal "Creating…".
+    code = await Promise.race([
+      createRoom(N, board),
+      new Promise((_, reject) => setTimeout(
+        () => reject(new Error('no connection — check your internet and try again')),
+        10000
+      )),
+    ]);
     track('room_created', { board_size: N });
   } catch (err) {
     btn.disabled = false;
@@ -1339,7 +1350,7 @@ async function tryRejoinOnlineGame() {
 
 // ─── Start — show blank board immediately, then async: rejoin online game or
 //             restore local saved game ─────────────────────────────────────────
-setupBoard();
+setupBoard(false); // keep go3d_save — the IIFE below restores it
 startRenderLoop();
 
 (async () => {
