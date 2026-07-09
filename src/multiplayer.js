@@ -1,5 +1,5 @@
 // ─── multiplayer.js — Firebase room management, state sync, chat ──────────────
-import { db, databaseURL } from './firebase.js';
+import { db, databaseURL, auth } from './firebase.js';
 import { getCachedIdToken } from './auth.js';
 import {
   ref, set, get, update, remove,
@@ -85,6 +85,7 @@ export async function createRoom(n, board) {
 
   await set(roomRef, {
     N:                 n,
+    hostUid:           auth.currentUser?.uid ?? null,  // records the host; security rules only let this UID write as host
     hostOnline:        true,
     guestOnline:       false,
     guestEverJoined:   false,   // set permanently true when guest joins
@@ -126,7 +127,7 @@ export async function joinRoom(code) {
   if (d.guestOnline)        return { ok: false, error: 'Room is full' };
   if (d.gameOver)           return { ok: false, error: 'Game already ended' };
 
-  await update(r, { guestOnline: true, guestEverJoined: true });
+  await update(r, { guestOnline: true, guestEverJoined: true, guestUid: auth.currentUser?.uid ?? null });
 
   roomRef              = r;
   chatRef              = ref(db, `rooms/${code}/chat`);
