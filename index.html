@@ -131,8 +131,13 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: var(--bg); font-family: sans-serif; overflow: hidden; }
     #app { width: 100vw; height: 100vh; height: 100dvh; position: relative; }
-    canvas { width: 100%; height: 100%; display: block; cursor: grab; }
-    canvas:active { cursor: grabbing; }
+    /* A custom IMAGE cursor is used because plain keyword cursors (grab,
+       crosshair, etc.) can drop out / go invisible over a GPU-accelerated
+       WebGL canvas on Chrome+Windows (notably AMD). A url() cursor forces a
+       compositing path that stays visible. Keyword after the comma = fallback. */
+    canvas { width: 100%; height: 100%; display: block;
+             cursor: url('/cursor-crosshair.png') 16 16, crosshair; }
+    canvas:active { cursor: url('/cursor-crosshair.png') 16 16, move; }
 
     /* ── Top bar ─────────────────────────────────────────────────────────── */
     #top-ui {
